@@ -1,0 +1,5 @@
+{
+    "jwtPrivateKey": "myPrivateKey",
+    "db": "db_blogger",
+    "expirationPeriod": "2592000"
+}
