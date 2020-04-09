@@ -2,7 +2,7 @@
 Blogger server
 
 # Run
-`npm run start`
+`npm start`
 
 # Installation
 `npm i`
