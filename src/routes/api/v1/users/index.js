@@ -7,7 +7,6 @@ const controller = require('../../../../controllers/user.controller');
 
 router.post('/register', uValidator.register, controller.register);
 router.post('/login', uValidator.login, controller.login);
-router.get('/logout', controller.logout);
 
 router.put('/update/profile', uValidator.updateProfile, controller.updateProfile);
 router.put('/update/password', uValidator.updatePassword, controller.updatePassword);

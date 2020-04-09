@@ -10,4 +10,7 @@ router.use('/groups', require('./groups'));
 // 'localhost:3000/api/v1/blogs'
 router.use('/blogs', require('./blogs'));
 
+// 'localhost:3000/api/v1/comments'
+router.use('/comments', require('./comments'));
+
 module.exports = router;

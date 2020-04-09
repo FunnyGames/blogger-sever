@@ -32,13 +32,6 @@ module.exports.login = async (req, res, next) => {
     }
 }
 
-module.exports.logout = async (req, res, next) => {
-    logger.info('logout');
-
-    res.clearCookie(COOKIE_JWT);
-    res.send({ ok: 1 });
-}
-
 module.exports.getProfile = async (req, res, next) => {
     logger.info('getProfile');
     const userId = req.decoded.uid;
