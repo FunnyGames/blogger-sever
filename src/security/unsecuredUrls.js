@@ -10,5 +10,6 @@ module.exports = [
     { url: '/api/v1/users/available', method: PUT },
     { url: '/api/v1/blogs/(:id)', method: GET },
     { url: '/api/v1/blogs', method: GET },
-    { url: '/api/v1/comments/(:id)', method: GET },
+    { url: '/api/v1/comments/(:id)/get', method: PUT },
+    { url: '/api/v1/reactions/(:id)', method: GET },
 ];

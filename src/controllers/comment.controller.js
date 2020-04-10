@@ -17,12 +17,10 @@ module.exports.getComments = async (req, res, next) => {
     const userId = req.decoded && req.decoded.uid;
     const blogId = req.params.blogId;
     const guest = utils.isGeust(req.decoded);
-    const name = req.query.name;
-    const sort = utils.getSort(req.query);
-    const page = req.query.page;
+    const seenIds = req.body.seenIds;
     const limit = req.query.limit;
 
-    let response = await commentServices.getComments(userId, blogId, guest, name, sort, page, limit);
+    let response = await commentServices.getComments(userId, blogId, guest, seenIds, limit);
     res.status(response.status).send(response.data);
 }
 

@@ -23,6 +23,12 @@ module.exports.createComment = async (userId, blogId, data) => {
         // Fetch username
         let user = await userModel.findOne({ _id: userId }).select('username');
 
+        // Check just in case
+        if (!user) {
+            logger.error('User not found');
+            return responseError(404, 'User not found');
+        }
+
         // We save username as well because it will never change, so we won't need additional query
         data.user = user; // user includes _id and username
         data.blogId = blogId;
@@ -38,12 +44,9 @@ module.exports.createComment = async (userId, blogId, data) => {
     return responseSuccess(response);
 }
 
-module.exports.getComments = async (userId, blogId, guest, name, sort, page, limit) => {
+module.exports.getComments = async (userId, blogId, guest, seenIds, limit) => {
     // Log the function name and the data
-    logger.info(`getComments - userId: ${userId}, blogId: ${blogId}, guest: ${guest}, name: ${name}, sort: ${JSON.stringify(sort)}, page: ${page}, limit: ${limit}`);
-
-    // Set default name to empty string
-    name = name || '';
+    logger.info(`getComments - userId: ${userId}, blogId: ${blogId}, guest: ${guest}, seenIds: ${seenIds}, limit: ${limit}`);
 
     // Set empty response
     let response = {};
@@ -54,30 +57,16 @@ module.exports.getComments = async (userId, blogId, guest, name, sort, page, lim
         if (blogResponse.status !== 200) {
             return responseError(blogResponse.status, blogResponse.data.error);
         }
-        // Calculate the skip by page with limit
-        let skip = (page - 1) * limit;
 
         // Match object to aggregate with
         // Search by blogId
-        // Set it to match with name regex
+        // Remove all seen comments
         let matchObject = {
-            blogId: mongoose.Types.ObjectId(blogId),
-            'user.username': {
-                $regex: name,
-                $options: 'i'
-            }
+            blogId: mongoose.Types.ObjectId(blogId)
         };
-
-        // Sort
-        let { key, order } = sort;
-        // This will limit sort by
-        switch (key) {
-            case 'createDate':
-                break;
-            default:
-                key = 'createDate';
-                order = -1;
-                break;
+        if (seenIds) {
+            seenIds = seenIds.map(id => mongoose.Types.ObjectId(id));
+            matchObject._id = { $nin: seenIds };
         }
 
         // Add users info with lookup
@@ -93,12 +82,12 @@ module.exports.getComments = async (userId, blogId, guest, name, sort, page, lim
                 }
             },
             {
-                $sort: { [key]: order }
+                $sort: { createDate: -1 }
             },
             {
                 $facet: {
-                    metadata: [{ $count: 'total' }, { $addFields: { page } }],
-                    comments: [{ $skip: skip }, { $limit: limit }]
+                    metadata: [{ $count: 'total' }],
+                    comments: [{ $limit: limit }]
                 }
             },
             {
@@ -115,8 +104,7 @@ module.exports.getComments = async (userId, blogId, guest, name, sort, page, lim
         // Check if metadata is missing (happens if nothing found)
         if (!comments.metadata) {
             comments.metadata = {
-                total: 0,
-                page
+                total: 0
             }
         }
 

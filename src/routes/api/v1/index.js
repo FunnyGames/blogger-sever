@@ -13,4 +13,7 @@ router.use('/blogs', require('./blogs'));
 // 'localhost:3000/api/v1/comments'
 router.use('/comments', require('./comments'));
 
+// 'localhost:3000/api/v1/reactions'
+router.use('/reactions', require('./reactions'));
+
 module.exports = router;
