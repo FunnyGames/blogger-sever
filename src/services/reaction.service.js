@@ -25,6 +25,7 @@ module.exports.createReaction = async (userId, blogId, data) => {
         if (react) {
             // Update existing document
             await reactionModel.updateOne({ _id: react._id }, { '$set': data });
+            react.react = data.react;
         } else {
             // Blog exists + user has permission to view blog
             // Fetch username
@@ -41,9 +42,31 @@ module.exports.createReaction = async (userId, blogId, data) => {
             data.blogId = blogId;
 
             // Save new document to DB
-            await reactionModel.create(data);
+            react = await reactionModel.create(data);
         }
-        response = { ok: 1 };
+
+        // Count total reactions of blog
+        let reacts = await reactionModel.aggregate([
+            {
+                $match: {
+                    blogId: mongoose.Types.ObjectId(blogId)
+                }
+            },
+            {
+                $group: {
+                    _id: '$react',
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    react: '$_id',
+                    count: 1
+                }
+            }
+        ]);
+        response = { reacts, myReaction: { _id: react._id, react: react.react } };
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -89,6 +112,12 @@ module.exports.getTotalReactions = async (userId, blogId, guest) => {
             }
         ]);
         response = { reacts };
+        if (!guest) {
+            let myReaction = await reactionModel.findOne({ blogId, 'user._id': userId }).select('react');
+            if (myReaction) {
+                response.myReaction = myReaction;
+            }
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -199,12 +228,33 @@ module.exports.deleteReactionById = async (reactionId, userId) => {
     // Set empty response
     let response = {};
     try {
-        let reaction = await reactionModel.deleteOne({ _id: reactionId, 'user._id': userId });
+        let reaction = await reactionModel.findOneAndDelete({ _id: reactionId, 'user._id': userId });
         if (reaction.deletedCount === 0) {
             logger.error('Reaction not found');
             return responseError(404, 'Reaction not found');
         }
-        response.ok = 1;
+        // Count total reactions of blog
+        let reacts = await reactionModel.aggregate([
+            {
+                $match: {
+                    blogId: mongoose.Types.ObjectId(reaction.blogId)
+                }
+            },
+            {
+                $group: {
+                    _id: '$react',
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    react: '$_id',
+                    count: 1
+                }
+            }
+        ]);
+        response = { reacts };
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
