@@ -66,3 +66,13 @@ module.exports.available = (req, res, next) => {
 
     validate(schema, req.body, res, next);
 }
+
+module.exports.cancelAccount = (req, res, next) => {
+    logger.info('cancelAccount');
+    const schema = Joi.object({
+        username: jUsername.required(),
+        password: jPassword.required()
+    });
+
+    validate(schema, req.body, res, next);
+}

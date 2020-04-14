@@ -11,6 +11,7 @@ router.post('/login', uValidator.login, controller.login);
 router.put('/update/profile', uValidator.updateProfile, controller.updateProfile);
 router.put('/update/password', uValidator.updatePassword, controller.updatePassword);
 router.put('/available', uValidator.available, controller.available);
+router.put('/cancel', uValidator.cancelAccount, controller.cancelAccount);
 
 router.get('/profile', controller.getProfile);                  // both /profile and /:id are both GET and have the same path '/...', so
 router.get('/:id', cValidator.paramId, controller.getUserById); // /:id should be below /profile, otherwise 'profile' would be identifeid as :id

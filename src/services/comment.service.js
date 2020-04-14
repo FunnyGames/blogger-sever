@@ -183,3 +183,22 @@ module.exports.deleteCommentById = async (commentId, userId) => {
     }
     return responseSuccess(response);
 }
+
+module.exports.deleteAllByBlogId = async (blogId) => {
+    // Log the function name and the data
+    logger.info(`deleteAllByBlogId - blogId: ${blogId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // Delete all by blog id
+        response = await commentModel.deleteMany({ blogId });
+        response = { ok: response.ok };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
