@@ -5,6 +5,7 @@ const Joi = require('@hapi/joi');
 const jPage = Joi.number().integer().min(1);
 const jLimit = Joi.number().integer().min(5).max(100);
 const jOid = Joi.objectId();
+const jSeenIds = Joi.array().items(Joi.objectId());
 
 // This will check if page and limit are correct
 module.exports.pagination = (req, res, next) => {
@@ -41,4 +42,14 @@ module.exports.paramId = (req, res, next) => {
     let schema = Joi.object(ids);
 
     validate(schema, req.params, res, next);
+}
+
+// This will check the seen ids for load more option
+module.exports.seenIds = (req, res, next) => {
+    logger.info('seenIds');
+    const schema = Joi.object({
+        seenIds: jSeenIds
+    }).unknown(); // This allows for other fields to be sent
+
+    validate(schema, req.body, res, next);
 }

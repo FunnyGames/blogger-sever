@@ -6,6 +6,8 @@ const groupModel = require('../models/group.model');
 const userGroupModel = require('../models/usergroup.model');
 const userBlogModel = require('../models/userblog.model');
 const utils = require('../common/utils');
+const commentServices = require('./comment.service');
+const reactionServices = require('./reaction.service');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
 module.exports.createBlog = async (userId, data, members, groups) => {
@@ -306,6 +308,10 @@ module.exports.deleteBlogById = async (blogId, userId) => {
 
         // Delete all members in the blog by sending empty array
         await modifyMembers(blogId, []);
+
+        // Delete all comments and reactions
+        await commentServices.deleteAllByBlogId(blogId);
+        await reactionServices.deleteAllByBlogId(blogId);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);

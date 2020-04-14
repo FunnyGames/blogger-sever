@@ -1,5 +1,6 @@
 const morgan = require('morgan');
 const tokenValidation = require('../middlewares/token-validation.middleware');
+const userStatus = require('../middlewares/user-status.middleware');
 const trimBody = require('../middlewares/trim.body.middleware');
 const logger = require('../common/logger');
 const cors = require('cors');
@@ -19,6 +20,9 @@ module.exports.configure = (app) => {
 
     // This is for validating token before allowing user to get to API
     app.use(tokenValidation);
+
+    // This is for checking if user exists (not using cancelled account)
+    app.use(userStatus);
 
     // This will decode the body of request
     app.use(express.json());

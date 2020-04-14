@@ -1,4 +1,5 @@
 const userServices = require('../services/user.service');
+const cancelUserServices = require('../services/cancel-user.service');
 const logger = require('../common/logger')(__filename);
 const utils = require('../common/utils');
 const { COOKIE_JWT } = require('../common/constants');
@@ -30,13 +31,6 @@ module.exports.login = async (req, res, next) => {
         res.cookie(COOKIE_JWT, jwt);
         res.send({ jwt });
     }
-}
-
-module.exports.logout = async (req, res, next) => {
-    logger.info('logout');
-
-    res.clearCookie(COOKIE_JWT);
-    res.send({ ok: 1 });
 }
 
 module.exports.getProfile = async (req, res, next) => {
@@ -103,5 +97,15 @@ module.exports.available = async (req, res, next) => {
     const userId = req.decoded ? req.decoded.uid : undefined;
 
     let response = await userServices.checkAvailability(username, email, userId);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.cancelAccount = async (req, res, next) => {
+    logger.info('cancelAccount');
+    const username = req.body.username;
+    const password = req.body.password;
+    const userId = req.decoded.uid;
+
+    let response = await cancelUserServices.cancelAccount(username, password, userId);
     res.status(response.status).send(response.data);
 }
