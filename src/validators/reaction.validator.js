@@ -1,8 +1,9 @@
 const logger = require('../common/logger')(__filename);
 const { validate } = require('./base.validator');
+const reactions = require('../constants/reactions');
 const Joi = require('@hapi/joi');
 
-const enums = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
+const enums = reactions.reactions;
 
 const jReact = Joi.string().valid(...enums);
 

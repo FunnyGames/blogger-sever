@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const blogServices = require('./blog.service');
 const reactionModel = require('../models/reaction.model');
 const userModel = require('../models/user.model');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
 module.exports.createReaction = async (userId, blogId, data) => {
@@ -67,6 +69,9 @@ module.exports.createReaction = async (userId, blogId, data) => {
             }
         ]);
         response = { reacts, myReaction: { _id: react._id, react: react.react } };
+
+        // Send notification
+        sendNotification(react, blogResponse.data);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -281,4 +286,17 @@ module.exports.deleteAllByBlogId = async (blogId) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+function sendNotification(data, blog) {
+    logger.info('sendNotification');
+    let not = {
+        kind: notification.react,
+        fromUsername: data.user.username,
+        fromUserId: data.user._id,
+        userId: blog.owner,
+        details: blog._id,
+        content: data.react
+    };
+    actions.sendNotification(not);
 }

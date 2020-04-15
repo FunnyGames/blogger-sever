@@ -33,7 +33,7 @@ module.exports.pagination = (req, res, next) => {
 module.exports.paramId = (req, res, next) => {
     logger.info('paramId');
     let ids = {
-        id: jOid.required()
+        id: jOid
     };
     // In case there are other ids like uid, gid, bid etc
     for (let p in req.params) {

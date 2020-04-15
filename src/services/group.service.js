@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 const groupModel = require('../models/group.model');
 const userGroupModel = require('../models/usergroup.model');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
 const utils = require('../common/utils');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
@@ -388,6 +390,18 @@ module.exports.addMember = async (groupId, userId, newUser) => {
 
         // Send status 200 and ok
         response = { ok: 1 };
+
+        // Send notification
+        try {
+            let user = await userModel.findOne({ _id: userId });
+            if (user) {
+                let username = user.username;
+                sendNotification(data, group, username);
+            }
+        } catch (e) {
+            logger.error(e.message);
+            logger.error('Could not send notification');
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -499,4 +513,17 @@ async function modifyMembers(groupId, dataMembers, owner) {
         await userGroupModel.deleteMany({ groupId, userId: { $in: removeArray } });
     }
     // There's no try-catch here because the function that calls this function already surrounded with try-catch
+}
+
+function sendNotification(data, group, username) {
+    logger.info('sendNotification');
+    let not = {
+        kind: notification.group_add,
+        fromUsername: username,
+        fromUserId: group.owner,
+        userId: data.userId,
+        details: group._id,
+        content: group.name
+    };
+    actions.sendNotification(not);
 }

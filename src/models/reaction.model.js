@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
+const reactions = require('../constants/reactions');
 
 const reactionSchema = new mongoose.Schema({
     react: {
         type: String,
-        enum: ['like', 'love', 'haha', 'wow', 'sad', 'angry'],
+        enum: reactions.reactions,
         required: true
     },
     user: {
