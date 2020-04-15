@@ -43,7 +43,6 @@ module.exports.getNotifications = async (userId, filter, sort, page, limit) => {
             {
                 $project: {
                     seen: 0,
-                    read: 0,
                     __v: 0
                 }
             },
