@@ -39,8 +39,10 @@ module.exports.createComment = async (userId, blogId, data) => {
         // Save to DB
         response = await commentModel.create(data);
 
-        // Send notification
-        sendNotification(response, blogResponse.data);
+        // Send notification if user is not owner
+        if (userId !== blogResponse.data.owner._id.toString()) {
+            sendNotification(response, blogResponse.data);
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -211,13 +213,14 @@ module.exports.deleteAllByBlogId = async (blogId) => {
 
 function sendNotification(data, blog) {
     logger.info('sendNotification');
-    let not = {
+    let n = {
+        content: utils.shortenMessage(data.content),
+        sourceName: blog.name,
+        sourceId: blog._id,
         kind: notification.comment,
         fromUsername: data.user.username,
         fromUserId: data.user._id,
         userId: blog.owner,
-        details: blog._id,
-        content: utils.shortenMessage(data.content)
     };
-    actions.sendNotification(not);
+    actions.sendNotification(n);
 }

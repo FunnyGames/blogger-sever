@@ -70,8 +70,10 @@ module.exports.createReaction = async (userId, blogId, data) => {
         ]);
         response = { reacts, myReaction: { _id: react._id, react: react.react } };
 
-        // Send notification
-        sendNotification(react, blogResponse.data);
+        // Send notification if user is not owner
+        if (userId !== blogResponse.data.owner._id.toString()) {
+            sendNotification(react, blogResponse.data);
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -290,13 +292,14 @@ module.exports.deleteAllByBlogId = async (blogId) => {
 
 function sendNotification(data, blog) {
     logger.info('sendNotification');
-    let not = {
+    let n = {
+        content: data.react,
+        sourceName: blog.name,
+        sourceId: blog._id,
         kind: notification.react,
         fromUsername: data.user.username,
         fromUserId: data.user._id,
         userId: blog.owner,
-        details: blog._id,
-        content: data.react
     };
-    actions.sendNotification(not);
+    actions.sendNotification(n);
 }

@@ -517,13 +517,13 @@ async function modifyMembers(groupId, dataMembers, owner) {
 
 function sendNotification(data, group, username) {
     logger.info('sendNotification');
-    let not = {
+    let n = {
+        sourceName: group.name,
+        sourceId: group._id,
         kind: notification.group_add,
         fromUsername: username,
         fromUserId: group.owner,
         userId: data.userId,
-        details: group._id,
-        content: group.name
     };
-    actions.sendNotification(not);
+    actions.sendNotification(n);
 }

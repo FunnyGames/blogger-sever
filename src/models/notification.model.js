@@ -3,7 +3,15 @@ const notifications = require('../constants/notifications');
 
 const notificationSchema = new mongoose.Schema({
     content: Object,
-    details: Object,
+    additionalData: Object,
+    sourceName: {
+        type: String,
+        required: true
+    },
+    sourceId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+    },
     kind: {
         type: String,
         enum: notifications.notifications,
