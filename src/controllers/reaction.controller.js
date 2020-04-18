@@ -5,10 +5,11 @@ const utils = require('../common/utils');
 module.exports.createReaction = async (req, res, next) => {
     logger.info('createReaction');
     const userId = req.decoded.uid;
+    const username = req.decoded.username;
     const blogId = req.params.blogId;
     const data = req.body;
 
-    let response = await reactionServices.createReaction(userId, blogId, data);
+    let response = await reactionServices.createReaction(userId, username, blogId, data);
     res.status(response.status).send(response.data);
 }
 

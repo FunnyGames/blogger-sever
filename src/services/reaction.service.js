@@ -7,9 +7,9 @@ const actions = require('../actions/notification');
 const { notification } = require('../constants/notifications');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
-module.exports.createReaction = async (userId, blogId, data) => {
+module.exports.createReaction = async (userId, username, blogId, data) => {
     // Log the function name and the data
-    logger.info(`createReaction - userId: ${userId}, blogId: ${blogId}, data: ${JSON.stringify(data)}`);
+    logger.info(`createReaction - userId: ${userId}, username: ${username}, blogId: ${blogId}, data: ${JSON.stringify(data)}`);
 
     // Set empty response
     let response = {};
@@ -29,18 +29,12 @@ module.exports.createReaction = async (userId, blogId, data) => {
             await reactionModel.updateOne({ _id: react._id }, { '$set': data });
             react.react = data.react;
         } else {
-            // Blog exists + user has permission to view blog
-            // Fetch username
-            let user = await userModel.findOne({ _id: userId }).select('username');
-
-            // Check just in case
-            if (!user) {
-                logger.error('User not found');
-                return responseError(404, 'User not found');
-            }
-
             // We save username as well because it will never change, so we won't need additional query
-            data.user = user; // user includes _id and username
+            const user = {
+                _id: userId,
+                username
+            };
+            data.user = user;
             data.blogId = blogId;
 
             // Save new document to DB

@@ -156,14 +156,31 @@ module.exports.readById = async (userId, notificationId) => {
     return responseSuccess(response);
 }
 
-module.exports.createNotification = async (data) => {
+module.exports.createNotification = async (data, members) => {
     // Log the function name and the data
-    logger.info(`createNotification - data: ${JSON.stringify(data)}`);
+    logger.info(`createNotification - data: ${JSON.stringify(data)}, members: ${members}`);
 
     // Set empty response
     let response = {};
     try {
-        response = await notificationModel.create(data);
+        if (!members || members.length === 0) {
+            response = await notificationModel.create(data);
+        } else {
+            const length = members.length;
+            const list = [];
+            for (let i = 0; i < length; ++i) {
+                const userId = members[i];
+                const n = {
+                    ...data,
+                    userId
+                };
+                list.push(n);
+            }
+            response = await notificationModel.insertMany(list);
+            if (response && response.insertedIds) {
+                logger.info('Number of users notified: ' + response.insertedIds.length);
+            }
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);

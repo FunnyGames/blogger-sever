@@ -3,22 +3,26 @@ const mongoose = require('mongoose');
 const blogModel = require('../models/blog.model');
 const userModel = require('../models/user.model');
 const groupModel = require('../models/group.model');
+const subscriptionModel = require('../models/subscription.model');
 const userGroupModel = require('../models/usergroup.model');
 const userBlogModel = require('../models/userblog.model');
 const utils = require('../common/utils');
 const commentServices = require('./comment.service');
 const reactionServices = require('./reaction.service');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
-module.exports.createBlog = async (userId, data, members, groups) => {
+module.exports.createBlog = async (userId, username, data, members, groups) => {
     // Log the function name and the data
-    logger.info(`createBlog - userId: ${userId}, data: ${JSON.stringify(data)}, members: ${members}, groups: ${groups}`);
+    logger.info(`createBlog - userId: ${userId}, username: ${username}, data: ${JSON.stringify(data)}, members: ${members}, groups: ${groups}`);
 
     // Set empty response
     let response = {};
     try {
         // Set owner to userId
         data.owner = userId;
+        data.ownerName = username;
 
         // Check if blog is public
         if ((members && members.length > 0) || (groups && groups.length > 0) || data.permission === 'private') {
@@ -31,6 +35,7 @@ module.exports.createBlog = async (userId, data, members, groups) => {
         response = await blogModel.create(data);
 
         // Add members
+        let privateMembers = [];
         if (data.permission === 'private') {
             // Make sure that array exists
             if (!members) members = [];
@@ -40,8 +45,11 @@ module.exports.createBlog = async (userId, data, members, groups) => {
             members.push(userId);
 
             // Save members
-            await modifyMembers(response._id, members, groups, userId);
+            privateMembers = await modifyMembers(response._id, members, groups, userId);
         }
+
+        // Create notification
+        sendNotification(response, privateMembers);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -524,4 +532,27 @@ async function modifyMembers(blogId, dataMembers, dataGroups, owner) {
         await userBlogModel.deleteMany({ blogId, groupId: { $in: removeGroupArray } });
     }
     // There's no try-catch here because the function that calls this function already surrounded with try-catch
+    return addArray;
+}
+
+async function sendNotification(blog, members) {
+    logger.info('sendNotification');
+    try {
+        const owner = blog.owner.toString();
+        let subArray = await subscriptionModel.find({ subToUserId: owner });
+        let subMembers = subArray.map(s => s.userId.toString());
+        if (members.length > 0) {
+            subMembers = subMembers.filter(s => members.includes(s));
+        }
+        let n = {
+            sourceName: blog.name,
+            sourceId: blog._id,
+            kind: notification.blog_new,
+            fromUsername: blog.ownerName,
+            fromUserId: owner
+        };
+        actions.sendNotification(n, subMembers);
+    } catch (error) {
+        logger.error(error.message);
+    }
 }

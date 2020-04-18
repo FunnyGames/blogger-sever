@@ -7,8 +7,9 @@ module.exports.createGroup = async (req, res, next) => {
     const data = req.body;
     const members = req.body.members;
     const userId = req.decoded.uid;
+    const username = req.decoded.username;
 
-    let response = await groupServices.createGroup(userId, data, members);
+    let response = await groupServices.createGroup(userId, username, data, members);
     res.status(response.status).send(response.data);
 }
 
@@ -73,9 +74,10 @@ module.exports.addMember = async (req, res, next) => {
     logger.info('addMember');
     const groupId = req.params.id;
     const userId = req.decoded.uid;
+    const username = req.decoded.username;
     const newUser = req.params.userId;
 
-    let response = await groupServices.addMember(groupId, userId, newUser);
+    let response = await groupServices.addMember(groupId, userId, username, newUser);
     res.status(response.status).send(response.data);
 }
 

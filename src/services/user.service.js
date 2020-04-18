@@ -2,6 +2,7 @@ const logger = require('../common/logger')(__filename);
 const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 const userGroupModel = require('../models/usergroup.model');
+const subscriptionModel = require('../models/subscription.model');
 const security = require('../security/security');
 const _ = require('lodash');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
@@ -93,15 +94,15 @@ module.exports.login = async (username, password) => {
     return responseSuccess(response);
 }
 
-module.exports.getUserById = async (userId, withEmail) => {
+module.exports.getUserById = async (userId, withEmail, reqUserId, withSub) => {
     // Log the function name and the data
-    logger.info('getProfile - userId: ' + userId + ', withEmail: ' + withEmail);
+    logger.info(`getUserById - userId: ${userId}, withEmail: ${withEmail}, reqUserId: ${reqUserId}, withSub: ${withSub}`);
 
     // Set empty response
     let response = {};
     try {
         // First check if user exists
-        let user = await userModel.findOne({ _id: userId });
+        let user = await userModel.findOne({ _id: userId }).select('_id firstName lastName username email');
         if (!user) {
             logger.warn('User not found');
             return responseError(404, 'User not found');
@@ -110,7 +111,16 @@ module.exports.getUserById = async (userId, withEmail) => {
         // Set response to { email, firstName, lastName, username }
         let data = ['_id', 'firstName', 'lastName', 'username'];
         if (withEmail) data.push('email');
+
         response = _.pick(user, data);
+        response.subscribed = false;
+
+        if (withSub && reqUserId && userId !== reqUserId) {
+            let sub = await subscriptionModel.findOne({ userId: reqUserId, subToUserId: userId });
+            if (sub) {
+                response.subscribed = true;
+            }
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -210,13 +220,6 @@ module.exports.updateProfile = async (userId, data) => {
     // Set empty response
     let response = {};
     try {
-        // First check if user exists
-        let user = await userModel.findOne({ _id: userId });
-        if (!user) {
-            logger.warn('User not found');
-            return responseError(404, 'User not found');
-        }
-
         // Update the DB
         let res = await userModel.updateOne({ _id: userId }, { $set: data });
 
@@ -373,7 +376,7 @@ module.exports.checkAvailability = async (username, email, userId) => {
         if (username) match.username_lower = username.toLowerCase();
         else match.email_lower = email.toLowerCase();
 
-        let user = await userModel.findOne(match);
+        let user = await userModel.findOne(match).select('-password');
         if (user) {
             if (user._id.toString() !== userId) {
                 let data = {
@@ -389,6 +392,157 @@ module.exports.checkAvailability = async (username, email, userId) => {
 
         // Username and email are available
         response = { ok: 1 };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.subscribe = async (userId, username, subToUserId) => {
+    // Log the function name and the data
+    logger.info(`subscribe - userId: ${userId}, username: ${username}, subToUserId: ${subToUserId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // First check if userId is not subscribing to themselves
+        if (userId === subToUserId) {
+            logger.error('User tries to subscribe to themselves');
+            return responseError(400, 'User tries to subscribe to themselves');
+        }
+
+        // Check if user exists
+        let subUser = await userModel.findOne({ _id: subToUserId }).select('username');
+        if (!subUser) {
+            logger.error('Sub-User not exists');
+            return responseError(404, `The user you are trying to subscribe doesn't exists`);
+        }
+        let sub = await subscriptionModel.findOne({ userId, subToUserId });
+        if (sub) {
+            logger.warn('User already subscribed to this user: ' + subToUserId);
+            return responseError(400, 'You already subscribed to this user');
+        }
+
+        let subData = {
+            userId,
+            username,
+            subToUserId,
+            subToUsername: subUser.username
+        };
+        await subscriptionModel.create(subData);
+
+        // Subscribed successfully
+        response = { ok: 1 };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.unsubscribe = async (userId, subToUserId) => {
+    // Log the function name and the data
+    logger.info(`unsubscribe - userId: ${userId}, subToUserId: ${subToUserId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // We don't care if sub not exists, it won't do anything anyways
+        let subData = {
+            userId,
+            subToUserId
+        };
+        let r = await subscriptionModel.deleteOne(subData);
+
+        // Unsubscribed successully
+        response = { ok: r.ok };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.subscriptions = async (userId, name, sort, page, limit) => {
+    // Log the function name and the data
+    logger.info(`subscriptions - userId: ${userId}, name: ${name}, sort: ${sort}, page: ${page}, limit: ${limit}`);
+
+    // Set default name to empty string
+    name = name ? name : '';
+
+    // Set empty response
+    let response = {};
+    try {
+        // Calculate the skip by page with limit
+        let skip = (page - 1) * limit;
+
+        // Sort
+        let { key, order } = sort;
+        // This will limit sort by
+        switch (key) {
+            case 'username':
+            case 'createDate':
+                break;
+            default:
+                key = 'createDate';
+                order = 1;
+                break;
+        }
+
+        // Find all subscriptions matching the name and sort them by create date
+        let subs = await subscriptionModel.aggregate([
+            {
+                $match: {
+                    userId: mongoose.Types.ObjectId(userId)
+                }
+            },
+            {
+                $project: {
+                    subToUserId: 1,
+                    subToUsername: 1
+                }
+            },
+            {
+                $match: {
+                    subToUsername: { $regex: name, $options: 'ig' }
+                }
+            },
+            {
+                $sort: { [key]: order }
+            },
+            {
+                $facet: {
+                    metadata: [{ $count: 'total' }, { $addFields: { page } }],
+                    users: [{ $skip: skip }, { $limit: limit }]
+                }
+            },
+            {
+                $project: {
+                    metadata: { $arrayElemAt: ['$metadata', 0] },
+                    users: 1
+                }
+            }
+        ]);
+        // The result will come as array - [{ metadata: {...}, users: [...] }]
+        // So convert the array to object
+        subs = subs[0];
+
+        // Check if metadata is missing (happens if nothing found)
+        if (!subs.metadata) {
+            subs.metadata = {
+                total: 0,
+                page
+            }
+        }
+        // Set it to response
+        response = subs;
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
