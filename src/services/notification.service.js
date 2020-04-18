@@ -24,7 +24,6 @@ module.exports.getNotifications = async (userId, filter, sort, page, limit) => {
         let { key, order } = sort;
         // This will limit sort by
         switch (key) {
-            case 'kind':
             case 'createDate':
                 break;
             default:
@@ -113,14 +112,22 @@ module.exports.getTotalNotifications = async (userId) => {
     return responseSuccess(response);
 }
 
-module.exports.readAll = async (userId) => {
+module.exports.readAll = async (userId, kind) => {
     // Log the function name and the data
-    logger.info(`readAll - userId: ${userId}`);
+    logger.info(`readAll - userId: ${userId}, kind: ${kind}`);
 
     // Set empty response
     let response = {};
     try {
-        let update = await notificationModel.updateMany({ userId, seen: true, read: false }, { $set: { read: true } });
+        let conditions = {
+            userId,
+            seen: true,
+            read: false
+        };
+        if (kind) {
+            conditions.kind = kind;
+        }
+        let update = await notificationModel.updateMany(conditions, { $set: { read: true } });
         response = { ok: update.ok };
     } catch (e) {
         // Catch error and log it

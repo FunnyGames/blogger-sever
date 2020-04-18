@@ -37,8 +37,9 @@ module.exports.getTotalNotifications = async (req, res, next) => {
 module.exports.readAll = async (req, res, next) => {
     logger.info('readAll');
     const userId = req.decoded.uid;
+    const kind = req.query.filter;
 
-    let response = await notificationServices.readAll(userId);
+    let response = await notificationServices.readAll(userId, kind);
     res.status(response.status).send(response.data);
 }
 

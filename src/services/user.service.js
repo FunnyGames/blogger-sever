@@ -108,7 +108,7 @@ module.exports.getUserById = async (userId, withEmail) => {
         }
 
         // Set response to { email, firstName, lastName, username }
-        let data = ['firstName', 'lastName', 'username'];
+        let data = ['_id', 'firstName', 'lastName', 'username'];
         if (withEmail) data.push('email');
         response = _.pick(user, data);
     } catch (e) {
