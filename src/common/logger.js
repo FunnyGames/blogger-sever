@@ -9,6 +9,16 @@ const serverFormat = winston.format.printf(({ level, message, label, timestamp }
     return `${timestamp} [${label}] ${level}: ${message}`;
 });
 
+const getLevel = () => {
+    const env = process.env.NODE_ENV;
+    switch (env) {
+        case 'production': return 'error';
+        case 'development': return 'info';
+        case 'debug': return 'debug';
+    }
+    return 'info';
+}
+
 // This function will get filename and use it as label
 function logger(filename) {
     // This is a default way to create a winston logger
@@ -28,7 +38,7 @@ function logger(filename) {
                         winston.format.timestamp(),
                         serverFormat
                     ),
-                    level: process.env.NODE_ENV === 'prod' ? 'error' : 'debug'
+                    level: getLevel()
                 }
             )
         ],
@@ -43,7 +53,7 @@ function logger(filename) {
                         winston.format.timestamp(),
                         serverFormat
                     ),
-                    level: process.env.NODE_ENV === 'prod' ? 'error' : 'debug'
+                    level: getLevel()
                 }
             )
         ]

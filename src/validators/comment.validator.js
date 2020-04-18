@@ -5,7 +5,7 @@ const Joi = require('@hapi/joi');
 const jContent = Joi.string().min(5).max(1000);
 
 module.exports.createComment = (req, res, next) => {
-    logger.info('createComment');
+    logger.debug('createComment');
     const schema = Joi.object({
         content: jContent.required()
     });
@@ -14,7 +14,7 @@ module.exports.createComment = (req, res, next) => {
 }
 
 module.exports.updateComment = (req, res, next) => {
-    logger.info('updateComment');
+    logger.debug('updateComment');
     const schema = Joi.object({
         content: jContent.required()
     });

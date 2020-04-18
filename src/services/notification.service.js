@@ -101,7 +101,7 @@ module.exports.getTotalNotifications = async (userId) => {
     let response = {};
     try {
         // Count the number of unseen notification
-        let count = await notificationModel.count({ userId, seen: false });
+        let count = await notificationModel.countDocuments({ userId, seen: false });
         response = { count };
     } catch (e) {
         // Catch error and log it

@@ -12,7 +12,7 @@ const jGroups = Joi.array().items(Joi.objectId());
 const jTags = Joi.array().items(Joi.string());
 
 module.exports.createBlog = (req, res, next) => {
-    logger.info('createBlog');
+    logger.debug('createBlog');
     const schema = Joi.object({
         name: jName.required(),
         entry: jEntry.required(),
@@ -26,7 +26,7 @@ module.exports.createBlog = (req, res, next) => {
 }
 
 module.exports.updateBlog = (req, res, next) => {
-    logger.info('updateBlog');
+    logger.debug('updateBlog');
     // Check if empty body
     if (!req.body) {
         logger.error('Body not provided');

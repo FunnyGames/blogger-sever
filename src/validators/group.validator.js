@@ -7,7 +7,7 @@ const jDescription = Joi.string().min(5).max(120);
 const jMembers = Joi.array().items(Joi.objectId())
 
 module.exports.createGroup = (req, res, next) => {
-    logger.info('createGroup');
+    logger.debug('createGroup');
     const schema = Joi.object({
         name: jName.required(),
         description: jDescription.required(),
@@ -18,7 +18,7 @@ module.exports.createGroup = (req, res, next) => {
 }
 
 module.exports.updateGroup = (req, res, next) => {
-    logger.info('updateGroup');
+    logger.debug('updateGroup');
     // Check if empty body
     if (!req.body) {
         logger.error('Body not provided');

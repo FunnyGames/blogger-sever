@@ -9,7 +9,7 @@ const jSeenIds = Joi.array().items(Joi.objectId());
 
 // This will check if page and limit are correct
 module.exports.pagination = (req, res, next) => {
-    logger.info('pagination');
+    logger.debug('pagination');
     const schema = Joi.object({
         page: jPage,
         limit: jLimit
@@ -31,7 +31,7 @@ module.exports.pagination = (req, res, next) => {
 
 // This will check if ids in params are actually valid object id of mongo
 module.exports.paramId = (req, res, next) => {
-    logger.info('paramId');
+    logger.debug('paramId');
     let ids = {
         id: jOid
     };
@@ -46,7 +46,7 @@ module.exports.paramId = (req, res, next) => {
 
 // This will check the seen ids for load more option
 module.exports.seenIds = (req, res, next) => {
-    logger.info('seenIds');
+    logger.debug('seenIds');
     const schema = Joi.object({
         seenIds: jSeenIds
     }).unknown(); // This allows for other fields to be sent

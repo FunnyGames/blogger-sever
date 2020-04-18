@@ -1,7 +1,7 @@
 const logger = require('../common/logger')(__filename);
 
 module.exports.validate = (schema, value, res, next) => {
-    logger.info('validate');
+    logger.debug('validate');
 
     let valid = this.validateSchema(schema, value, res);
     if (valid)
@@ -11,9 +11,9 @@ module.exports.validate = (schema, value, res, next) => {
 module.exports.validateSchema = (schema, value, res) => {
     // Don't log sensitive data
     if (isSensitive(value))
-        logger.info(`validateSchema`);
+        logger.debug(`validateSchema`);
     else
-        logger.info(`validateSchema - value: ${JSON.stringify(value)}`);
+        logger.debug(`validateSchema - value: ${JSON.stringify(value)}`);
 
     const { error } = schema.validate(value);
     if (error) {

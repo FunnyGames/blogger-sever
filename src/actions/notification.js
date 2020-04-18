@@ -3,7 +3,7 @@ const logger = require('../common/logger')(__filename);
 
 // This file is responsible for creating an sending notifications
 module.exports.sendNotification = async (data, members) => {
-    logger.info(`sendNotification - data: ${JSON.stringify(data)}, members: ${members}`);
+    logger.debug(`sendNotification - data: ${JSON.stringify(data)}, members: ${members}`);
 
     const res = await notificationServices.createNotification(data, members);
     if (res.status !== 200) return;
