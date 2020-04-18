@@ -113,12 +113,13 @@ module.exports.getUserById = async (userId, withEmail, reqUserId, withSub) => {
         if (withEmail) data.push('email');
 
         response = _.pick(user, data);
-        response.subscribed = false;
 
         if (withSub && reqUserId && userId !== reqUserId) {
             let sub = await subscriptionModel.findOne({ userId: reqUserId, subToUserId: userId });
             if (sub) {
                 response.subscribed = true;
+            } else {
+                response.subscribed = false;
             }
         }
     } catch (e) {
