@@ -23,12 +23,14 @@ module.exports.createReaction = async (userId, username, blogId, data) => {
 
         // Check if user already has reaction
         let react = await reactionModel.findOne({ 'user._id': userId, blogId });
+        let create = false;
 
         if (react) {
             // Update existing document
             await reactionModel.updateOne({ _id: react._id }, { '$set': data });
             react.react = data.react;
         } else {
+            create = true;
             // We save username as well because it will never change, so we won't need additional query
             const user = {
                 _id: userId,
@@ -65,7 +67,7 @@ module.exports.createReaction = async (userId, username, blogId, data) => {
         response = { reacts, myReaction: { _id: react._id, react: react.react } };
 
         // Send notification if user is not owner
-        if (userId !== blogResponse.data.owner._id.toString()) {
+        if (create && userId !== blogResponse.data.owner._id.toString()) {
             sendNotification(react, blogResponse.data);
         }
     } catch (e) {
