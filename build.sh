@@ -1,5 +1,11 @@
-$APP_NAME=funnygames/blogger-server
+APP_NAME=funnygames/blogger-server
 
-docker build -t $APP_NAME .
+docker container stop $(docker container ls -aq)
 
-docker run -p 80:5000 -d $APP_NAME
+docker container rm $(docker container ls -aq)
+
+docker system prune --volumes
+
+docker build -name blogger_server -t $APP_NAME .
+
+docker run -e NODE_ENV=production -p 80:5000 -d $APP_NAME 
