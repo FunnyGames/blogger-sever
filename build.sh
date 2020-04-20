@@ -10,4 +10,4 @@ docker rmi $APP_NAME
 
 docker build -t $APP_NAME .
 
-docker run -e NODE_ENV=production -p 443:5000 -d $APP_NAME 
+docker run -e NODE_ENV=production -p 80:5000 -d $APP_NAME 
