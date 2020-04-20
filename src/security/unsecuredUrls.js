@@ -5,6 +5,7 @@ const PUT = 'PUT';
 
 // List of addresses that guest is allowed to visit (not logged in user)
 module.exports = [
+    { url: '/health', method: GET },
     { url: '/api/v1/users/login', method: POST },
     { url: '/api/v1/users/register', method: POST },
     { url: '/api/v1/users/available', method: PUT },
