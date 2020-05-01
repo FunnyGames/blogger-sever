@@ -2,7 +2,6 @@ const logger = require('../common/logger')(__filename);
 const mongoose = require('mongoose');
 const blogServices = require('./blog.service');
 const commentModel = require('../models/comment.model');
-const userModel = require('../models/user.model');
 const actions = require('../actions/notification');
 const { notification } = require('../constants/notifications');
 const utils = require('../common/utils');

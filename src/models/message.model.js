@@ -17,7 +17,7 @@ const messageSchema = new mongoose.Schema({
         index: true, // We want to reduce search time, we know the chat we are looking for
         required: true
     },
-    read: {
+    deleted: {
         type: Boolean,
         required: true,
         default: false

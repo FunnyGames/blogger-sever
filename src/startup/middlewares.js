@@ -7,9 +7,13 @@ const cors = require('cors');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
+const helmet = require('helmet');
 
 // This will configure all middlewares
 module.exports.configure = (app) => {
+    // This will add more security to server
+    app.use(helmet());
+
     // This allows to anyone send requests to server
     app.use(cors());
 
