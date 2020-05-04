@@ -2,12 +2,14 @@ const logger = require('../common/logger')(__filename);
 const mongoose = require('mongoose');
 const blogServices = require('./blog.service');
 const commentModel = require('../models/comment.model');
-const userModel = require('../models/user.model');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
+const utils = require('../common/utils');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
-module.exports.createComment = async (userId, blogId, data) => {
+module.exports.createComment = async (userId, username, blogId, data) => {
     // Log the function name and the data
-    logger.info(`createComment - userId: ${userId}, blogId: ${blogId}, data: ${JSON.stringify(data)}`);
+    logger.info(`createComment - userId: ${userId}, username: ${username}, blogId: ${blogId}, data: ${JSON.stringify(data)}`);
 
     // Set empty response
     let response = {};
@@ -19,22 +21,21 @@ module.exports.createComment = async (userId, blogId, data) => {
             return responseError(blogResponse.status, blogResponse.data.error);
         }
 
-        // Blog exists + user has permission to view blog
-        // Fetch username
-        let user = await userModel.findOne({ _id: userId }).select('username');
-
-        // Check just in case
-        if (!user) {
-            logger.error('User not found');
-            return responseError(404, 'User not found');
-        }
-
         // We save username as well because it will never change, so we won't need additional query
-        data.user = user; // user includes _id and username
+        const user = {
+            _id: userId,
+            username
+        };
+        data.user = user;
         data.blogId = blogId;
 
         // Save to DB
         response = await commentModel.create(data);
+
+        // Send notification if user is not owner
+        if (userId !== blogResponse.data.owner._id.toString()) {
+            sendNotification(response, blogResponse.data);
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -201,4 +202,18 @@ module.exports.deleteAllByBlogId = async (blogId) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+function sendNotification(data, blog) {
+    logger.info('sendNotification');
+    let n = {
+        content: utils.shortenMessage(data.content),
+        sourceName: blog.name,
+        sourceId: blog._id,
+        kind: notification.comment,
+        fromUsername: data.user.username,
+        fromUserId: data.user._id,
+        userId: blog.owner._id,
+    };
+    actions.sendNotification(n);
 }

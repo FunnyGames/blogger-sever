@@ -6,6 +6,9 @@ const groupModel = require('../models/group.model');
 const blogModel = require('../models/blog.model');
 const commentModel = require('../models/comment.model');
 const reactionModel = require('../models/reaction.model');
+const notificationModel = require('../models/notification.model');
+const subscriptionModel = require('../models/subscription.model');
+const settingModel = require('../models/settings.model');
 const security = require('../security/security');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
@@ -65,6 +68,20 @@ module.exports.cancelAccount = async (username, password, userId) => {
         logger.info('Delete all reactions of user - count: ' + d.deletedCount);
         d = await blogModel.deleteMany({ owner: userId });
         logger.info('Delete all blogs of user - count: ' + d.deletedCount);
+
+        // Subscriptions
+        d = await subscriptionModel.deleteMany({ userId });
+        logger.info('Delete all subscriptions of user - count: ' + d.deletedCount);
+        d = await subscriptionModel.deleteMany({ subToUserId: userId });
+        logger.info('Delete all subscribers of user - count: ' + d.deletedCount);
+
+        // Notifications
+        d = await notificationModel.deleteMany({ userId });
+        logger.info('Delete all notification of user - count: ' + d.deletedCount);
+
+        // User settings
+        d = await settingModel.deleteOne({ userId });
+        logger.info('Delete user settings of user - count: ' + d.deletedCount);
 
         // User
         d = await userModel.deleteOne({ _id: userId });

@@ -9,7 +9,7 @@ const jLastName = Joi.string().min(1).max(50)
 const jEmail = Joi.string().min(5).max(120).email({ minDomainSegments: 2 });
 
 module.exports.register = (req, res, next) => {
-    logger.info('register');
+    logger.debug('register');
     const schema = Joi.object({
         username: jUsername.required(),
         password: jPassword.required(),
@@ -22,7 +22,7 @@ module.exports.register = (req, res, next) => {
 }
 
 module.exports.login = (req, res, next) => {
-    logger.info('login');
+    logger.debug('login');
     const schema = Joi.object({
         username: jUsername.required(),
         password: jPassword.required()
@@ -32,7 +32,7 @@ module.exports.login = (req, res, next) => {
 }
 
 module.exports.updateProfile = (req, res, next) => {
-    logger.info('updateProfile');
+    logger.debug('updateProfile');
     const schema = Joi.object({
         email: jEmail,
         firstName: jFirstName,
@@ -47,7 +47,7 @@ module.exports.updateProfile = (req, res, next) => {
 }
 
 module.exports.updatePassword = (req, res, next) => {
-    logger.info('updatePassword');
+    logger.debug('updatePassword');
     const schema = Joi.object({
         oldPassword: jPassword.required(),
         newPassword: jPassword.required()
@@ -57,8 +57,7 @@ module.exports.updatePassword = (req, res, next) => {
 }
 
 module.exports.available = (req, res, next) => {
-    logger.info('available');
-    logger.info(JSON.stringify(req.body));
+    logger.debug('available');
     const schema = Joi.object({
         username: jUsername,
         email: jEmail
@@ -68,7 +67,7 @@ module.exports.available = (req, res, next) => {
 }
 
 module.exports.cancelAccount = (req, res, next) => {
-    logger.info('cancelAccount');
+    logger.debug('cancelAccount');
     const schema = Joi.object({
         username: jUsername.required(),
         password: jPassword.required()

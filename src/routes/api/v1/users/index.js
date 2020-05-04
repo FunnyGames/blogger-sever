@@ -13,6 +13,10 @@ router.put('/update/password', uValidator.updatePassword, controller.updatePassw
 router.put('/available', uValidator.available, controller.available);
 router.put('/cancel', uValidator.cancelAccount, controller.cancelAccount);
 
+router.get('/subscribe/:id', cValidator.paramId, controller.subscribe);
+router.get('/unsubscribe/:id', cValidator.paramId, controller.unsubscribe);
+router.get('/subscriptions', cValidator.pagination, controller.subscriptions);
+
 router.get('/profile', controller.getProfile);                  // both /profile and /:id are both GET and have the same path '/...', so
 router.get('/:id', cValidator.paramId, controller.getUserById); // /:id should be below /profile, otherwise 'profile' would be identifeid as :id
 router.get('/', cValidator.pagination, controller.getUsers);

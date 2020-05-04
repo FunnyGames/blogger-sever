@@ -59,3 +59,8 @@ module.exports.getSort = (query) => {
 module.exports.isGeust = (decoded) => {
     return (decoded ? false : true);
 }
+
+module.exports.shortenMessage = (msg, length = 50) => {
+    if (!msg) return '';
+    return (msg.length > length ? msg.substring(0, length - 3) + '...' : msg);
+}

@@ -6,14 +6,22 @@ const logger = require('../common/logger');
 const cors = require('cors');
 const express = require('express');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
+const helmet = require('helmet');
 
 // This will configure all middlewares
 module.exports.configure = (app) => {
+    // This will add more security to server
+    app.use(helmet());
+
     // This allows to anyone send requests to server
     app.use(cors());
 
     // This allows us to use cookies
     app.use(cookieParser());
+
+    // This will compress the response
+    app.use(compression());
 
     // This is used for logger to get the API address and response status
     app.use(morgan('tiny', { 'stream': logger.stream }));

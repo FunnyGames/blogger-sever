@@ -2,12 +2,13 @@ const logger = require('../common/logger')(__filename);
 const mongoose = require('mongoose');
 const blogServices = require('./blog.service');
 const reactionModel = require('../models/reaction.model');
-const userModel = require('../models/user.model');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
-module.exports.createReaction = async (userId, blogId, data) => {
+module.exports.createReaction = async (userId, username, blogId, data) => {
     // Log the function name and the data
-    logger.info(`createReaction - userId: ${userId}, blogId: ${blogId}, data: ${JSON.stringify(data)}`);
+    logger.info(`createReaction - userId: ${userId}, username: ${username}, blogId: ${blogId}, data: ${JSON.stringify(data)}`);
 
     // Set empty response
     let response = {};
@@ -21,24 +22,20 @@ module.exports.createReaction = async (userId, blogId, data) => {
 
         // Check if user already has reaction
         let react = await reactionModel.findOne({ 'user._id': userId, blogId });
+        let create = false;
 
         if (react) {
             // Update existing document
             await reactionModel.updateOne({ _id: react._id }, { '$set': data });
             react.react = data.react;
         } else {
-            // Blog exists + user has permission to view blog
-            // Fetch username
-            let user = await userModel.findOne({ _id: userId }).select('username');
-
-            // Check just in case
-            if (!user) {
-                logger.error('User not found');
-                return responseError(404, 'User not found');
-            }
-
+            create = true;
             // We save username as well because it will never change, so we won't need additional query
-            data.user = user; // user includes _id and username
+            const user = {
+                _id: userId,
+                username
+            };
+            data.user = user;
             data.blogId = blogId;
 
             // Save new document to DB
@@ -67,6 +64,11 @@ module.exports.createReaction = async (userId, blogId, data) => {
             }
         ]);
         response = { reacts, myReaction: { _id: react._id, react: react.react } };
+
+        // Send notification if user is not owner
+        if (create && userId !== blogResponse.data.owner._id.toString()) {
+            sendNotification(react, blogResponse.data);
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -281,4 +283,18 @@ module.exports.deleteAllByBlogId = async (blogId) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+function sendNotification(data, blog) {
+    logger.info('sendNotification');
+    let n = {
+        content: data.react,
+        sourceName: blog.name,
+        sourceId: blog._id,
+        kind: notification.react,
+        fromUsername: data.user.username,
+        fromUserId: data.user._id,
+        userId: blog.owner._id,
+    };
+    actions.sendNotification(n);
 }

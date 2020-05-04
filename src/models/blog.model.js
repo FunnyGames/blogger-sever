@@ -25,6 +25,10 @@ const blogSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    ownerName: {
+        type: String,
+        required: true
+    },
     createDate: {
         type: Date,
         default: Date.now

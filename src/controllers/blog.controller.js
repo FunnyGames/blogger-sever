@@ -5,11 +5,12 @@ const utils = require('../common/utils');
 module.exports.createBlog = async (req, res, next) => {
     logger.info('createBlog');
     const userId = req.decoded.uid;
+    const username = req.decoded.username;
     const data = req.body;
     const members = req.body.members;
     const groups = req.body.groups;
 
-    let response = await blogServices.createBlog(userId, data, members, groups);
+    let response = await blogServices.createBlog(userId, username, data, members, groups);
     res.status(response.status).send(response.data);
 }
 

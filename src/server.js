@@ -15,7 +15,7 @@ async function connectDB() {
 }
 connectDB();
 
-require('./startup/validation')();
+require('./startup/joi-validation')();
 configMiddleware.configure(app);
 require('./startup/routes')(app);
 require('./startup/config')();

@@ -7,7 +7,7 @@ const { COOKIE_JWT, HEADER_AUTH } = require('../common/constants');
 
 module.exports = (req, res, next) => {
     const token = req.headers[HEADER_AUTH] || req.cookies[COOKIE_JWT];
-    logger.info('tokenValidation');
+    logger.debug('tokenValidation');
     if (token) {
         try {
             const decoded = jwt.verify(token, config.get('jwtPrivateKey'));

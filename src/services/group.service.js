@@ -3,12 +3,14 @@ const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 const groupModel = require('../models/group.model');
 const userGroupModel = require('../models/usergroup.model');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
 const utils = require('../common/utils');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
-module.exports.createGroup = async (userId, data, members) => {
+module.exports.createGroup = async (userId, username, data, members) => {
     // Log the function name and the data
-    logger.info(`createGroup - userId: ${userId}, data: ${JSON.stringify(data)}, members: ${members}`);
+    logger.info(`createGroup - userId: ${userId}, username: ${username}, data: ${JSON.stringify(data)}, members: ${members}`);
 
     // Set empty response
     let response = {};
@@ -27,7 +29,10 @@ module.exports.createGroup = async (userId, data, members) => {
             members.push(userId);
         }
         // Save members
-        await modifyMembers(response._id, members, userId);
+        let currentMembers = await modifyMembers(response._id, members, userId);
+
+        // Send notification
+        sendNotification(null, response, username, currentMembers);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -352,9 +357,9 @@ module.exports.getGroupUsers = async (groupId, name, sort, page, limit) => {
     return responseSuccess(response);
 }
 
-module.exports.addMember = async (groupId, userId, newUser) => {
+module.exports.addMember = async (groupId, userId, username, newUser) => {
     // Log the function name and the data
-    logger.info(`addMember - groupId: ${groupId}, userId: ${userId}, newUser: ${newUser}`);
+    logger.info(`addMember - groupId: ${groupId}, userId: ${userId}, username: ${username}, newUser: ${newUser}`);
 
     // Set empty response
     let response = {};
@@ -388,6 +393,9 @@ module.exports.addMember = async (groupId, userId, newUser) => {
 
         // Send status 200 and ok
         response = { ok: 1 };
+
+        // Send notification
+        sendNotification(newUser, group, username);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -499,4 +507,22 @@ async function modifyMembers(groupId, dataMembers, owner) {
         await userGroupModel.deleteMany({ groupId, userId: { $in: removeArray } });
     }
     // There's no try-catch here because the function that calls this function already surrounded with try-catch
+    return addArray;
+}
+
+function sendNotification(newUser, group, username, members) {
+    logger.info('sendNotification');
+    const owner = group.owner.toString();
+    let n = {
+        sourceName: group.name,
+        sourceId: group._id,
+        kind: notification.group_add,
+        fromUsername: username,
+        fromUserId: owner,
+        userId: newUser,
+    };
+    if (members && members.length > 0) {
+        members = members.filter(m => m !== owner);
+    }
+    actions.sendNotification(n, members);
 }

@@ -16,4 +16,13 @@ router.use('/comments', require('./comments'));
 // 'localhost:3000/api/v1/reactions'
 router.use('/reactions', require('./reactions'));
 
+// 'localhost:3000/api/v1/notifications'
+router.use('/notifications', require('./notifications'));
+
+// 'localhost:3000/api/v1/chat'
+router.use('/chat', require('./chat'));
+
+// 'localhost:3000/api/v1/users/settings'
+router.use('/settings', require('./settings'));
+
 module.exports = router;

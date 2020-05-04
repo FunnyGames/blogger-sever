@@ -2,19 +2,21 @@ const logger = require('../common/logger')(__filename);
 const { validate } = require('./base.validator');
 const Joi = require('@hapi/joi');
 
-const jContent = Joi.string().min(5).max(1000);
+const jUserId = Joi.objectId();
+const jContent = Joi.string().min(1).max(1000);
 
-module.exports.createComment = (req, res, next) => {
-    logger.debug('createComment');
+
+module.exports.createChat = (req, res, next) => {
+    logger.debug('createChat');
     const schema = Joi.object({
-        content: jContent.required()
+        userId: jUserId.required()
     });
 
     validate(schema, req.body, res, next);
 }
 
-module.exports.updateComment = (req, res, next) => {
-    logger.debug('updateComment');
+module.exports.createMessage = (req, res, next) => {
+    logger.debug('createMessage');
     const schema = Joi.object({
         content: jContent.required()
     });
