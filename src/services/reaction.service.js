@@ -294,7 +294,7 @@ function sendNotification(data, blog) {
         kind: notification.react,
         fromUsername: data.user.username,
         fromUserId: data.user._id,
-        userId: blog.owner,
+        userId: blog.owner._id,
     };
     actions.sendNotification(n);
 }

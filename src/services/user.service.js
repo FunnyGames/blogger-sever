@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 const userGroupModel = require('../models/usergroup.model');
 const subscriptionModel = require('../models/subscription.model');
+const settingServices = require('../services/settings.service');
 const security = require('../security/security');
 const _ = require('lodash');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
@@ -35,6 +36,9 @@ module.exports.register = async (data) => {
         data.email_lower = data.email;
         data.username_lower = data.username;
         user = await userModel.create(data);
+
+        // Create default settings
+        await settingServices.createDefaultSettings(user._id);
 
         // If didn't throw exception then `user` exists
         // Create jwt for user
@@ -489,6 +493,7 @@ module.exports.subscriptions = async (userId, name, sort, page, limit) => {
         // This will limit sort by
         switch (key) {
             case 'username':
+                key = 'subToUsername';
             case 'createDate':
                 break;
             default:
@@ -507,7 +512,8 @@ module.exports.subscriptions = async (userId, name, sort, page, limit) => {
             {
                 $project: {
                     subToUserId: 1,
-                    subToUsername: 1
+                    subToUsername: 1,
+                    createDate: 1
                 }
             },
             {

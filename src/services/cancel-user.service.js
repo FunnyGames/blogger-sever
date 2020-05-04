@@ -8,6 +8,7 @@ const commentModel = require('../models/comment.model');
 const reactionModel = require('../models/reaction.model');
 const notificationModel = require('../models/notification.model');
 const subscriptionModel = require('../models/subscription.model');
+const settingModel = require('../models/settings.model');
 const security = require('../security/security');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
@@ -77,6 +78,10 @@ module.exports.cancelAccount = async (username, password, userId) => {
         // Notifications
         d = await notificationModel.deleteMany({ userId });
         logger.info('Delete all notification of user - count: ' + d.deletedCount);
+
+        // User settings
+        d = await settingModel.deleteOne({ userId });
+        logger.info('Delete user settings of user - count: ' + d.deletedCount);
 
         // User
         d = await userModel.deleteOne({ _id: userId });
