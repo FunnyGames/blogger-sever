@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const config = require('config');
 const logger = require('../common/logger')(__filename);
 const security = require('../security/security');
@@ -10,7 +9,7 @@ module.exports = (req, res, next) => {
     logger.debug('tokenValidation');
     if (token) {
         try {
-            const decoded = jwt.verify(token, config.get('jwtPrivateKey'));
+            const decoded = security.verifyToken(token);
             if (decoded) {
                 // make sure that the token is still valid
                 // iat - token creation in unix time

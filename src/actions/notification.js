@@ -1,6 +1,7 @@
 const notificationServices = require('../services/notification.service');
 const setttingServices = require('../services/settings.service');
 const { notification: type } = require('../constants/notifications');
+const socket = require('../socket/socket');
 const logger = require('../common/logger')(__filename);
 
 // This file is responsible for creating an sending notifications
@@ -12,8 +13,12 @@ module.exports.sendNotification = async (data, members) => {
     if (webMembers.length > 0) {
         const res = await notificationServices.createNotification(data, webMembers);
         if (res.status !== 200) return;
-        let notification = res.data;
-        // TODO - use notification to send user in WS
+        const event = socket.NOTIFICATION;
+        const length = webMembers.length;
+        for (let i = 0; i < length; ++i) {
+            const to = webMembers[i];
+            socket.send(to, event, data);
+        }
     }
 }
 
