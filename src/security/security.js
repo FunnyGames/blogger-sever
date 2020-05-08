@@ -35,3 +35,7 @@ module.exports.crypt = async (password) => {
 module.exports.validatePassword = async (password1, password2) => {
     return await bcrypt.compare(password1, password2);
 }
+
+module.exports.verifyToken = (token) => {
+    return jwt.verify(token, config.get('jwtPrivateKey'));
+}

@@ -4,6 +4,7 @@ const chatModel = require('../models/chat.model');
 const messageModel = require('../models/message.model');
 const userModel = require('../models/user.model');
 const utils = require('../common/utils');
+const socket = require('../socket/socket');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
 
@@ -78,7 +79,7 @@ module.exports.createMessage = async (userId, username, chatId, data) => {
             return responseError(405, 'Cannot post message to a blocked user');
         }
         const { content } = data;
-        const message = {
+        let message = {
             content,
             fromUserId: userId,
             chatId
@@ -93,6 +94,12 @@ module.exports.createMessage = async (userId, username, chatId, data) => {
             deleted: false
         };
         await chatModel.updateOne({ _id: chatId }, updateChatData);
+
+        message = response.toObject();
+        const meUser1 = chat.userId1.toString() === userId;
+        const otherUser = meUser1 ? chat.userId2 : chat.userId1;
+        message.fromUsername = meUser1 ? chat.username1 : chat.username2;
+        socket.send(otherUser, socket.MESSAGE, message);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -207,11 +214,12 @@ module.exports.getTotalNewMessages = async (userId) => {
     let response = {};
     try {
         // Count number of new message for user
-        const count = await chatModel.countDocuments({
+        const chats = await chatModel.find({
             $or: [{ userId1: userId }, { userId2: userId }],
             lastUserId: { $ne: userId },
             totalNewMessages: { $gt: 0 }
-        });
+        }).select('_id');
+        const count = chats.map(c => c._id);
 
         // Set it to response
         response = { count };
@@ -264,6 +272,7 @@ module.exports.blockUser = async (userId, chatId) => {
             return responseError(404, 'Chat not found');
         }
         let updateUser;
+        let otherUser;
         if (chat.userId1.toString() === userId) {
             if (chat.userBlocked1) {
                 logger.error('User is blocked');
@@ -273,6 +282,7 @@ module.exports.blockUser = async (userId, chatId) => {
                 return responseSuccess({ ok: 1 });
             } else {
                 updateUser = { userBlocked2: true };
+                otherUser = chat.userId2;
             }
         } else {
             if (chat.userBlocked2) {
@@ -283,11 +293,15 @@ module.exports.blockUser = async (userId, chatId) => {
                 return responseSuccess({ ok: 1 });
             } else {
                 updateUser = { userBlocked1: true };
+                otherUser = chat.userId1;
             }
         }
         let res = await chatModel.updateOne({ _id: chatId }, { $set: updateUser });
         // Set ok response
         response = { ok: res.ok };
+
+        let data = { chatId };
+        socket.send(otherUser, socket.BLOCK_USER, data);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -311,6 +325,7 @@ module.exports.unblockUser = async (userId, chatId) => {
             return responseError(404, 'Chat not found');
         }
         let updateUser;
+        let otherUser;
         if (chat.userId1.toString() === userId) {
             if (chat.userBlocked1) {
                 logger.error('User is blocked');
@@ -320,6 +335,7 @@ module.exports.unblockUser = async (userId, chatId) => {
                 return responseSuccess({ ok: 1 });
             } else {
                 updateUser = { userBlocked2: false };
+                otherUser = chat.userId2;
             }
         } else {
             if (chat.userBlocked2) {
@@ -330,11 +346,15 @@ module.exports.unblockUser = async (userId, chatId) => {
                 return responseSuccess({ ok: 1 });
             } else {
                 updateUser = { userBlocked1: false };
+                otherUser = chat.userId1;
             }
         }
         let res = await chatModel.updateOne({ _id: chatId }, { $set: updateUser });
         // Set ok response
         response = { ok: res.ok };
+
+        let data = { chatId };
+        socket.send(otherUser, socket.UNBLOCK_USER, data);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -360,6 +380,31 @@ module.exports.deleteMessageById = async (userId, chatId, msgId) => {
         }
         await chatModel.updateOne({ _id: chatId, lastMessageId: msgId }, { $set: { lastMessage: '.', deleted: true } });
         response = { ok: res.ok };
+
+        let chat = await chatModel.findOne({ _id: chatId });
+        if (chat) {
+            let otherUser = chat.userId1.toString() === userId ? chat.userId2 : chat.userId1;
+            let data = { chatId, msgId };
+            socket.send(otherUser, socket.DELETE_MESSAGE, data);
+        }
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.markMessageReadById = async (userId, chatId, msgId) => {
+    // Log the function name and the data
+    logger.info(`markMessageReadById - userId: ${userId}, chatId: ${chatId}, msgId: ${msgId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // Mark message read
+        response = await chatModel.updateOne({ _id: chatId, lastMessageId: msgId, $or: [{ userId1: userId }, { userId2: userId }] }, { totalNewMessages: 0 });
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
