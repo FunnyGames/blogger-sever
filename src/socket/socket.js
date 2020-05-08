@@ -1,16 +1,22 @@
 const logger = require('../common/logger')(__filename);
 const socketServices = require('../services/socket.service');
+const chatServices = require('../services/chat.service');
 const CONSTANTS = require('../common/constants');
 const security = require('../security/security');
 
-let socket = null;
+let io = null;
 
 module.exports.NOTIFICATION = 'notification';
 module.exports.MESSAGE = 'message';
+module.exports.MESSAGE_READ = 'message_read';
+module.exports.DELETE_MESSAGE = 'delete_message';
+module.exports.BLOCK_USER = 'block_user';
+module.exports.UNBLOCK_USER = 'unblock_user';
+module.exports.USER_STATUS = 'user_status';
 
-module.exports.setUp = function (io) {
+module.exports.setUp = function (_io) {
     logger.info('setUp');
-    socket = io;
+    io = _io;
     io.use(async (socket, next) => {
         let token = socket.handshake.headers[CONSTANTS.HEADER_AUTH];
         if (token) {
@@ -38,13 +44,13 @@ module.exports.setUp = function (io) {
 
 module.exports.send = (to, event, data) => {
     logger.info(`send - to: ${to}, event: ${event}, data: ${JSON.stringify(data)}`);
-    if (socket) {
+    if (io) {
         const sId = socketServices.getSocketId(to);
         if (sId) {
-            socket.to(sId).emit(event, data);
+            io.to(sId).emit(event, data);
             return true;
         }
-        logger.warn('User / socketId not available / connected');
+        logger.warn('User/socketId not available/connected');
     } else {
         logger.error('Socket not available/connected');
     }
@@ -53,16 +59,46 @@ module.exports.send = (to, event, data) => {
 
 const socketEvents = (io) => {
     io.on('connection', (s) => {
-        s.on(CONSTANTS.SOCKET_MESSAGE, (data) => message(s, data));
+        s.on(CONSTANTS.SOCKET_MESSAGE_READ, async (data) => await messageRead(s, data));
+        s.on(CONSTANTS.SOCKET_JOIN, (data) => join(s, data));
+        s.on(CONSTANTS.SOCKET_LEAVE, (data) => leave(s, data));
         s.on(CONSTANTS.SOCKET_LOGOUT, () => disconnect(s));
         s.on(CONSTANTS.SOCKET_DISCONNECT, () => disconnect(s));
+
+        updateUserOnline(s);
     });
 }
 
-const message = async (socket, data) => {
-    logger.info('message - data: ' + data);
+const updateUserOnline = (socket) => {
+    logger.info('updateUserOnline');
     if (socket.decoded) {
-        // TODO - send message
+        io.to(socket.decoded.uid).emit(this.USER_STATUS, { online: true });
+    }
+}
+
+const messageRead = async (socket, data) => {
+    logger.info('messageRead - data: ' + JSON.stringify(data));
+    if (socket.decoded) {
+        const { chatId, _id: msgId } = data;
+        await chatServices.markMessageReadById(socket.decoded.uid, chatId, msgId);
+    }
+}
+
+const join = (socket, data) => {
+    logger.info('join - data: ' + JSON.stringify(data));
+    if (socket.decoded) {
+        const { userId } = data;
+        socket.join(userId);
+        const online = socketServices.getSocketId(userId) ? true : false;
+        io.to(socket.id).emit(this.USER_STATUS, { online });
+    }
+}
+
+const leave = (socket, data) => {
+    logger.info('leave - data: ' + JSON.stringify(data));
+    if (socket.decoded) {
+        const { userId } = data;
+        socket.leave(userId);
     }
 }
 
@@ -70,5 +106,6 @@ const disconnect = async (socket) => {
     logger.info('disconnect');
     if (socket.decoded) {
         socketServices.disconnect(socket.decoded.uid);
+        io.to(socket.decoded.uid).emit(this.USER_STATUS, { online: false });
     }
 }
