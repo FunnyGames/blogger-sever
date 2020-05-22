@@ -35,18 +35,30 @@ module.exports.login = async (req, res, next) => {
 
 module.exports.getProfile = async (req, res, next) => {
     logger.info('getProfile');
-    const userId = req.decoded.uid;
+    const { uid, username, firstName, lastName, email } = req.decoded;
+    const data = {
+        _id: uid,
+        username,
+        firstName,
+        lastName,
+        email
+    };
 
-    let response = await userServices.getUserById(userId, true);
-    res.status(response.status).send(response.data);
+    res.status(200).send(data);
 }
 
 module.exports.getUserById = async (req, res, next) => {
     logger.info('getUserById');
     const userId = req.params.id;
     const decodedUid = req.decoded.uid;
-
-    let response = await userServices.getUserById(userId, false, decodedUid, true);
+    const data = {
+        userId,
+        withEmail: false,
+        reqUserId: decodedUid,
+        withSub: true,
+        withFriend: true
+    };
+    let response = await userServices.getUserById(data);
     res.status(response.status).send(response.data);
 }
 
@@ -129,6 +141,72 @@ module.exports.subscriptions = async (req, res, next) => {
     const sort = utils.getSort(req.query);
 
     let response = await userServices.subscriptions(userId, name, sort, page, limit);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.friend = async (req, res, next) => {
+    logger.info('friend');
+    const userId = req.decoded.uid;
+    const username = req.decoded.username;
+    const toUserId = req.params.id;
+
+    let response = await userServices.friend(userId, username, toUserId);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.unfriend = async (req, res, next) => {
+    logger.info('unfriend');
+    const userId = req.decoded.uid;
+    const friendId = req.params.id;
+
+    let response = await userServices.unfriend(userId, friendId);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.friendAccept = async (req, res, next) => {
+    logger.info('friendAccept');
+    const userId = req.decoded.uid;
+    const friendId = req.params.id;
+
+    let response = await userServices.friendAccept(userId, friendId);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.friends = async (req, res, next) => {
+    logger.info('friends');
+    const userId = req.query.userId || req.decoded.uid;
+    const page = req.query.page;
+    const limit = req.query.limit;
+    const name = req.query.name;
+    const sort = utils.getSort(req.query);
+    const filter = false;
+    const filterData = req.query.userId !== req.decoded.uid ? true : false;
+    const hideRequests = false;
+
+    let response = await userServices.friends(userId, name, sort, filter, page, limit, filterData, hideRequests);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.requests = async (req, res, next) => {
+    logger.info('requests');
+    const userId = req.decoded.uid;
+    const page = req.query.page;
+    const limit = req.query.limit;
+    const name = req.query.name;
+    const sort = utils.getSort(req.query);
+    const filter = true;
+    const filterData = false;
+    const hideRequests = req.query.hideRequests === 'true';
+
+    let response = await userServices.friends(userId, name, sort, filter, page, limit, filterData, hideRequests);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.totalFriendRequests = async (req, res, next) => {
+    logger.info('totalFriendRequests');
+    const userId = req.decoded.uid;
+
+    let response = await userServices.totalFriendRequests(userId);
     res.status(response.status).send(response.data);
 }
 

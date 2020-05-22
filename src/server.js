@@ -37,6 +37,6 @@ const io = require('socket.io')(server, {
 require('./socket/socket').setUp(io);
 
 const port = process.env.PORT || 5000;
-server.listen(port, () => logger.info(`Listening on port ${port}...`));
+server.listen(port, () => console.log(`Listening on port ${port}...`));
 
 module.exports = server;

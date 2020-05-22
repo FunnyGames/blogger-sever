@@ -3,6 +3,7 @@ const notification = {
     comment: 'comment',
     group_add: 'group_add',
     blog_new: 'blog_new',
+    friend_request: 'friend_request',
     custom: 'custom'
 };
 

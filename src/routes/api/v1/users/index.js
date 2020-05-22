@@ -17,6 +17,13 @@ router.get('/subscribe/:id', cValidator.paramId, controller.subscribe);
 router.get('/unsubscribe/:id', cValidator.paramId, controller.unsubscribe);
 router.get('/subscriptions', cValidator.pagination, controller.subscriptions);
 
+router.get('/friends/:id/friend', cValidator.paramId, controller.friend);
+router.get('/friends/:id/unfriend', cValidator.paramId, controller.unfriend);
+router.get('/friends/:id/accept', cValidator.paramId, controller.friendAccept);
+router.get('/friends', cValidator.pagination, controller.friends);
+router.get('/friends/requests', cValidator.pagination, controller.requests);
+router.get('/friends/total', cValidator.pagination, controller.totalFriendRequests);
+
 router.get('/profile', controller.getProfile);                  // both /profile and /:id are both GET and have the same path '/...', so
 router.get('/:id', cValidator.paramId, controller.getUserById); // /:id should be below /profile, otherwise 'profile' would be identifeid as :id
 router.get('/', cValidator.pagination, controller.getUsers);

@@ -12,6 +12,7 @@ module.exports.updateSettings = (req, res, next) => {
         reactSettings: jNotificationSettings.required(),
         groupSettings: jNotificationSettings.required(),
         blogSettings: jNotificationSettings.required(),
+        friendSettings: jNotificationSettings.required(),
         customSettings: jNotificationSettings.required(),
     });
 

@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 const userGroupModel = require('../models/usergroup.model');
 const subscriptionModel = require('../models/subscription.model');
+const friendModel = require('../models/friend.model');
 const settingServices = require('../services/settings.service');
 const security = require('../security/security');
+const actions = require('../actions/notification');
+const { notification } = require('../constants/notifications');
 const _ = require('lodash');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
 
@@ -98,9 +101,10 @@ module.exports.login = async (username, password) => {
     return responseSuccess(response);
 }
 
-module.exports.getUserById = async (userId, withEmail, reqUserId, withSub) => {
+module.exports.getUserById = async (data) => {
+    let { userId, withEmail, reqUserId, withSub, withFriend } = data;
     // Log the function name and the data
-    logger.info(`getUserById - userId: ${userId}, withEmail: ${withEmail}, reqUserId: ${reqUserId}, withSub: ${withSub}`);
+    logger.info(`getUserById - userId: ${userId}, withEmail: ${withEmail}, reqUserId: ${reqUserId}, withSub: ${withSub}, withFriend: ${withFriend}`);
 
     // Set empty response
     let response = {};
@@ -118,12 +122,24 @@ module.exports.getUserById = async (userId, withEmail, reqUserId, withSub) => {
 
         response = _.pick(user, data);
 
-        if (withSub && reqUserId && userId !== reqUserId) {
-            let sub = await subscriptionModel.findOne({ userId: reqUserId, subToUserId: userId });
-            if (sub) {
-                response.subscribed = true;
-            } else {
-                response.subscribed = false;
+        if (reqUserId && userId !== reqUserId) {
+            if (withSub) {
+                let sub = await subscriptionModel.findOne({ userId: reqUserId, subToUserId: userId });
+                if (sub) {
+                    response.subscribed = true;
+                } else {
+                    response.subscribed = false;
+                }
+            }
+            if (withFriend) {
+                let friend = await friendModel.findOne({
+                    $or: [{ userId1: reqUserId, userId2: userId }, { userId1: userId, userId2: reqUserId }]
+                }).select('-createDate -__v');
+                if (friend) {
+                    response.friend = friend;
+                } else {
+                    response.friend = null;
+                }
             }
         }
     } catch (e) {
@@ -557,4 +573,283 @@ module.exports.subscriptions = async (userId, name, sort, page, limit) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+module.exports.friend = async (userId, username, toUserId) => {
+    // Log the function name and the data
+    logger.info(`friend - userId: ${userId}, username: ${username}, toUserId: ${toUserId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // First check if userId is not sending request to themselves
+        if (userId === toUserId) {
+            logger.error('User tries to friends themselves');
+            return responseError(400, 'User tries to friends themselves');
+        }
+
+        // Check if user exists
+        let secUser = await userModel.findOne({ _id: toUserId }).select('username');
+        if (!secUser) {
+            logger.error('User not exists');
+            return responseError(404, `The user you are trying to friend doesn't exists`);
+        }
+        let friend = await friendModel.findOne(
+            {
+                $or: [
+                    { userId1: userId, userId2: toUserId },
+                    { userId1: toUserId, userId2: userId }
+                ]
+            }
+        );
+        if (friend) {
+            const { pending } = friend;
+            if (pending) {
+                logger.warn('User already send friend request to this user: ' + toUserId);
+                return responseError(400, 'You already sent friend request to this user');
+            }
+            logger.warn('User already friend to this user: ' + toUserId);
+            return responseError(400, 'You already friend with this user');
+        }
+
+        let friendData = {
+            userId1: userId,
+            userRequested: userId,
+            username1: username,
+            userId2: toUserId,
+            username2: secUser.username
+        };
+
+        // Request sent successfully
+        response = await friendModel.create(friendData);
+
+        sendFriendNotification(userId, response.toObject());
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.unfriend = async (userId, friendId) => {
+    // Log the function name and the data
+    logger.info(`unfriend - userId: ${userId}, friendId: ${friendId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // We don't care if request not exists, it won't do anything anyways
+        let friendData = {
+            _id: friendId,
+            $or: [
+                { userId1: userId },
+                { userId2: userId }
+            ]
+        };
+        let r = await friendModel.deleteOne(friendData);
+
+        // Friend removed successully
+        response = { ok: r.ok };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.friendAccept = async (userId, friendId) => {
+    // Log the function name and the data
+    logger.info(`friendAccept - userId: ${userId}, friendId: ${friendId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // We don't care if sub not exists, it won't do anything anyways
+        let friendData = {
+            _id: friendId,
+            $or: [
+                { userId1: userId },
+                { userId2: userId }
+            ]
+        };
+        let friend = await friendModel.findOne(friendData);
+        if (!friend) {
+            logger.error('Friend request not found');
+            return responseError(404, 'Friend request not found');
+        }
+        if (!friend.pending) {
+            logger.error('Friend request already accepted');
+            return responseError(404, 'Friend request already accepted');
+        }
+        let r = await friendModel.updateOne({ _id: friendId }, { pending: false });
+
+        // Friend removed successully
+        response = { ok: r.ok };
+
+        sendFriendNotification(userId, { ...friend.toObject(), pending: false });
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.friends = async (userId, name, sort, filter, page, limit, filterData, hideRequests) => {
+    // Log the function name and the data
+    logger.info(`friends - userId: ${userId}, name: ${name}, sort: ${sort}, filter: ${filter}, page: ${page}, limit: ${limit}, filterData: ${filterData}, hideRequests: ${hideRequests}`);
+
+    // Set default name to empty string
+    name = name || '';
+
+    // Set empty response
+    let response = {};
+    try {
+        // Calculate the skip by page with limit
+        let skip = (page - 1) * limit;
+
+        // Sort
+        let { key, order } = sort;
+        // This will limit sort by
+        switch (key) {
+            case 'createDate':
+                break;
+            default:
+                key = 'createDate';
+                order = 1;
+                break;
+        }
+        // Check filter
+        const uId = mongoose.Types.ObjectId(userId);
+        const matchObj = {
+            pending: false,
+            $or: [
+                {
+                    userId1: uId,
+                },
+                {
+                    userId2: uId
+                }
+            ]
+        };
+        const projectObj = {
+            createDate: 0,
+            __v: 0
+        };
+        if (!filterData) {
+            if (filter === true || filter === false) {
+                matchObj.pending = filter;
+                // Only show friend requests that user NOT requested
+                if (filter && hideRequests) {
+                    matchObj.userRequested = { $ne: uId };
+                }
+            }
+        } else {
+            projectObj._id = 0;
+            projectObj.pending = 0;
+            projectObj.userRequested = 0;
+        }
+        // Find all friends matching the name and sort them by create date
+        let friends = await friendModel.aggregate([
+            {
+                $match: matchObj
+            },
+            {
+                $match: {
+                    $or: [
+                        { username1: { $regex: name, $options: 'ig' } },
+                        { username2: { $regex: name, $options: 'ig' } }
+                    ]
+                }
+            },
+            {
+                $sort: { [key]: order }
+            },
+            {
+                $project: projectObj
+            },
+            {
+                $facet: {
+                    metadata: [{ $count: 'total' }, { $addFields: { page } }],
+                    users: [{ $skip: skip }, { $limit: limit }]
+                }
+            },
+            {
+                $project: {
+                    metadata: { $arrayElemAt: ['$metadata', 0] },
+                    users: 1
+                }
+            }
+        ]);
+        // The result will come as array - [{ metadata: {...}, users: [...] }]
+        // So convert the array to object
+        friends = friends[0];
+
+        // Check if metadata is missing (happens if nothing found)
+        if (!friends.metadata) {
+            friends.metadata = {
+                total: 0,
+                page
+            }
+        }
+        // Set it to response
+        response = friends;
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.totalFriendRequests = async (userId) => {
+    // Log the function name and the data
+    logger.info(`totalFriendRequests - userId: ${userId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // Count the number of friend requests
+        let friendData = {
+            pending: true,
+            $or: [
+                { userId1: userId },
+                { userId2: userId }
+            ],
+            userRequested: { $ne: userId }
+        };
+        const requests = await friendModel.find(friendData).select('_id');
+        const count = requests.map(r => r._id);
+        response = { count };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+function sendFriendNotification(userId, data) {
+    logger.info('sendFriendNotification - userId: ' + userId + ', data: ' + JSON.stringify(data));
+
+    const userId1 = data.userId1.toString();
+    const userId2 = data.userId2.toString();
+    const toUserId = userId === userId1 ? userId2 : userId1;
+    const fromUsername = userId === userId1 ? data.username1 : data.username2;
+    const fromUserId = userId === userId1 ? userId1 : userId2;
+
+    let n = {
+        content: data,
+        kind: notification.friend_request,
+        fromUsername,
+        fromUserId
+    };
+    actions.sendFriendNotification(n, toUserId);
 }

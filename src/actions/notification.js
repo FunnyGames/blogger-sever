@@ -22,6 +22,17 @@ module.exports.sendNotification = async (data, members) => {
     }
 }
 
+module.exports.sendFriendNotification = async (data, member) => {
+    logger.debug(`sendFriendNotification - data: ${JSON.stringify(data)}, member: ${member}`);
+
+    const { webMember, emailMember } = await filterMember(data, member);
+
+    if (webMember) {
+        const event = socket.FRIEND;
+        socket.send(webMember, event, data);
+    }
+}
+
 async function filterMembers(data, members) {
     logger.debug(`filterMembers - data: ${data}, members: ${members}`);
     const webMembers = [];
@@ -34,17 +45,7 @@ async function filterMembers(data, members) {
     const { data: settings } = await setttingServices.getBulk(members);
 
     const { kind } = data;
-    let nKind = null;
-    switch (kind) {
-        case type.blog_new: nKind = 'blogSettings'; break;
-        case type.comment: nKind = 'commentSettings'; break;
-        case type.react: nKind = 'reactSettings'; break;
-        case type.group_add: nKind = 'groupSettings'; break;
-        case type.custom:
-        default:
-            nKind = 'customSettings';
-            break;
-    }
+    let nKind = getKind(kind);
 
     const length = settings.length;
     for (let i = 0; i < length; ++i) {
@@ -60,4 +61,41 @@ async function filterMembers(data, members) {
     }
 
     return { webMembers, emailMembers };
+}
+
+async function filterMember(data, userId) {
+    logger.debug(`filterMembers - data: ${data}, userId: ${userId}`);
+    let webMember = null;
+    let emailMember = null;
+
+    const { data: settings } = await setttingServices.getSettings(userId);
+
+    const { kind } = data;
+    let nKind = getKind(kind);
+
+    const arr = settings[nKind];
+    if (arr.includes('web')) {
+        webMember = userId;
+    }
+    if (arr.includes('email')) {
+        emailMember = userId;
+    }
+
+    return { webMember, emailMember };
+}
+
+function getKind(kind) {
+    let nKind = null;
+    switch (kind) {
+        case type.blog_new: nKind = 'blogSettings'; break;
+        case type.comment: nKind = 'commentSettings'; break;
+        case type.react: nKind = 'reactSettings'; break;
+        case type.group_add: nKind = 'groupSettings'; break;
+        case type.friend_request: nKind = 'friendSettings'; break;
+        case type.custom:
+        default:
+            nKind = 'customSettings';
+            break;
+    }
+    return nKind;
 }

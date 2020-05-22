@@ -7,6 +7,9 @@ const blogModel = require('../models/blog.model');
 const commentModel = require('../models/comment.model');
 const reactionModel = require('../models/reaction.model');
 const notificationModel = require('../models/notification.model');
+const chatModel = require('../models/chat.model');
+const messageModel = require('../models/message.model');
+const friendModel = require('../models/friend.model');
 const subscriptionModel = require('../models/subscription.model');
 const settingModel = require('../models/settings.model');
 const security = require('../security/security');
@@ -42,8 +45,10 @@ module.exports.cancelAccount = async (username, password, userId) => {
         // Everything is valid, let's delete them
         let blogs = await blogModel.find({ owner: userId });
         let groups = await groupModel.find({ owner: userId });
+        let chats = await chatModel.find({ $or: [{ userId1: userId }, { userId2: userId }] });
         blogs = blogs.map(b => b._id);
         groups = groups.map(g => g._id);
+        chats = chats.map(c => c._id);
 
         // Group related
         let d = await userGroupModel.deleteMany({ userId });
@@ -78,6 +83,16 @@ module.exports.cancelAccount = async (username, password, userId) => {
         // Notifications
         d = await notificationModel.deleteMany({ userId });
         logger.info('Delete all notification of user - count: ' + d.deletedCount);
+
+        // Chat
+        d = await chatModel.deleteMany({ _id: { $in: chats } });
+        logger.info('Delete all chats of user - count: ' + d.deletedCount);
+        d = await messageModel.deleteMany({ chatId: { $in: chats } });
+        logger.info('Delete all messages of user related to chat - count: ' + d.deletedCount);
+
+        // Friends
+        d = await friendModel.deleteMany({ $or: [{ userId1: userId }, { userId2: userId }] });
+        logger.info('Delete all friends of user - count: ' + d.deletedCount);
 
         // User settings
         d = await settingModel.deleteOne({ userId });

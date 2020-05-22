@@ -23,6 +23,11 @@ const settingSchema = new mongoose.Schema({
         default: defaultSettings,
         required: true
     },
+    friendSettings: {
+        type: Array,
+        default: defaultSettings,
+        required: true
+    },
     customSettings: {
         type: Array,
         default: defaultSettings,
