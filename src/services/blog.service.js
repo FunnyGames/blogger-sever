@@ -7,6 +7,7 @@ const subscriptionModel = require('../models/subscription.model');
 const userGroupModel = require('../models/usergroup.model');
 const userBlogModel = require('../models/userblog.model');
 const utils = require('../common/utils');
+const userServices = require('./user.service');
 const commentServices = require('./comment.service');
 const reactionServices = require('./reaction.service');
 const actions = require('../actions/notification');
@@ -27,8 +28,6 @@ module.exports.createBlog = async (userId, username, data, members, groups) => {
         // Check if blog is public
         if ((members && members.length > 0) || (groups && groups.length > 0) || data.permission === 'private') {
             data.permission = 'private';
-        } else {
-            data.permission = 'public';
         }
 
         // Save to DB
@@ -59,9 +58,9 @@ module.exports.createBlog = async (userId, username, data, members, groups) => {
     return responseSuccess(response);
 }
 
-module.exports.getBlogs = async (userId, userIdToShow, guest, name, sort, page, limit) => {
+module.exports.getBlogs = async (userId, userIdToShow, guest, name, sort, page, limit, tab) => {
     // Log the function name and the data
-    logger.info(`getBlogs - userId: ${userId}, userIdToShow: ${userIdToShow}, guest: ${guest}, name: ${name}, sort: ${JSON.stringify(sort)}, page: ${page}, limit: ${limit}`);
+    logger.info(`getBlogs - userId: ${userId}, userIdToShow: ${userIdToShow}, guest: ${guest}, name: ${name}, sort: ${JSON.stringify(sort)}, page: ${page}, limit: ${limit}, tab: ${tab}`);
 
     // Set default name to empty string
     name = name || '';
@@ -99,21 +98,8 @@ module.exports.getBlogs = async (userId, userIdToShow, guest, name, sort, page, 
         if (guest) {
             matchAccess.permission = 'public';
         } else {
-            let userBlogs = await getUserBlogs(userId);
-            let set = new Set(userBlogs); // Create a set to remove duplicates
-            userBlogs = Array.from(set).map(u => mongoose.Types.ObjectId(u)); // Convert string back to ObjectId
-
-            matchAccess = {
-                $or: [
-                    {
-                        permission: 'public'
-                    },
-                    {
-                        permission: 'private',
-                        _id: { $in: userBlogs }
-                    }
-                ]
-            };
+            if (userIdToShow === userId) tab = undefined;
+            matchAccess = await getAccessAndTab(userId, tab);
         }
 
         // Sort
@@ -201,9 +187,84 @@ module.exports.getBlogs = async (userId, userIdToShow, guest, name, sort, page, 
     return responseSuccess(response);
 }
 
+async function getAccessAndTab(userId, tab) {
+    let matchAccess = {};
+
+    let userBlogs = await getUserBlogs(userId);
+    let set = new Set(userBlogs); // Create a set to remove duplicates
+    userBlogs = Array.from(set).map(u => mongoose.Types.ObjectId(u)); // Convert string back to ObjectId
+    let users = await userServices.friends(userId, null, {}, false, 1, 10000, false, true);
+    let friends = users.data.users.map(u => {
+        if (userId === u.userId1.toString()) return u.userId2;
+        else return u.userId1;
+    });
+
+    if (tab === 'subs') {
+        let sub = await userServices.subscriptions(userId, null, {}, 1, 10000);
+        let subs = sub.data.users.map(u => u.subToUserId);
+        matchAccess = {
+            $or: [
+                {
+                    permission: 'public',
+                    owner: { $in: subs }
+                },
+                {
+                    permission: 'private',
+                    _id: { $in: userBlogs },
+                    owner: { $in: subs }
+                },
+                {
+                    permission: 'friends',
+                    $and: [
+                        { owner: { $in: subs } },
+                        { owner: { $in: friends } }
+                    ]
+                }
+            ]
+        };
+    } else if (tab === 'friends') {
+        matchAccess = {
+            $or: [
+                {
+                    permission: 'public',
+                    owner: { $in: friends }
+                },
+                {
+                    permission: 'private',
+                    _id: { $in: userBlogs },
+                    owner: { $in: friends }
+                },
+                {
+                    permission: 'friends',
+                    owner: { $in: friends }
+                }
+            ]
+        };
+    } else {
+        friends.push(mongoose.Types.ObjectId(userId));
+        matchAccess = {
+            $or: [
+                {
+                    permission: 'public'
+                },
+                {
+                    permission: 'private',
+                    _id: { $in: userBlogs }
+                },
+                {
+                    permission: 'friends',
+                    owner: { $in: friends }
+                }
+            ]
+        };
+    }
+
+    return matchAccess;
+}
+
 module.exports.getBlogById = async (blogId, userId, guest) => {
     // Log the function name and the data
-    logger.info(`getBlogById - blogId: ${blogId}, userId:${userId}, guest: ${guest}`);
+    logger.info(`getBlogById - blogId: ${blogId}, userId: ${userId}, guest: ${guest}`);
 
     // Set empty response
     let response = {};
@@ -214,10 +275,17 @@ module.exports.getBlogById = async (blogId, userId, guest) => {
             logger.error('Blog not found');
             return responseError(404, 'Blog not found');
         }
-        if (blog.permission === 'private') {
+        if (blog.permission === 'private' || blog.permission === 'friends') {
             if (guest) {
                 logger.error('User not allowed to view blog');
                 return responseError(403, 'User not allowed to view blog');
+            } else if (blog.permission === 'friends') {
+                let friends = await userServices.friends(blog.owner._id, null, {}, false, 1, 100000, false, true);
+                let users = friends.data.users;
+                if (users.filter(u => userId === u.userId1.toString() || userId === u.userId2.toString()).length == 0) {
+                    logger.error('User not allowed to view blog');
+                    return responseError(403, 'User not allowed to view blog');
+                }
             } else {
                 let userBlogs = await getUserBlogs(userId, blogId);
                 if (userBlogs.filter(b => blogId === b).length == 0) {
@@ -257,12 +325,11 @@ module.exports.updateBlogById = async (blogId, userId, data, members, groups) =>
         }
 
         // Update members
+        // Make sure array exists
+        if (!members) members = [];
+        if (!groups) groups = [];
         // Check if client sent changes on members
         if (members || groups || data.permission === 'private') {
-            // Make sure array exists
-            if (!members) members = [];
-            if (!groups) groups = [];
-
             // Find if changed from public to private or vice versa
             if (members.length > 0 || groups.length > 0 || data.permission === 'private') {
                 data.permission = 'private';
@@ -271,12 +338,9 @@ module.exports.updateBlogById = async (blogId, userId, data, members, groups) =>
                 // Even if owner already there, modifyMembers converts the array to a set
                 // so duplicates will be removed anyway
                 members.push(blog.owner.toString());
-            } else {
-                // If public then no need to add owner to members
-                data.permission = 'public';
             }
-            await modifyMembers(blogId, members, groups, userId);
         }
+        await modifyMembers(blogId, members, groups, userId);
 
         // Last, update the name/entry of blog
         let res = await blogModel.updateOne({ _id: blogId }, { $set: data });

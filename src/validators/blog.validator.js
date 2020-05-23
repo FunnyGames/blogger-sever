@@ -2,7 +2,7 @@ const logger = require('../common/logger')(__filename);
 const { validate } = require('./base.validator');
 const Joi = require('@hapi/joi');
 
-const enums = ['public', 'private'];
+const enums = ['public', 'private', 'friends'];
 
 const jName = Joi.string().min(5).max(120);
 const jEntry = Joi.string().min(5);
