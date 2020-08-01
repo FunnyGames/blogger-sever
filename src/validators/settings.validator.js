@@ -4,6 +4,7 @@ const Joi = require('@hapi/joi');
 
 const enums = ['web', 'email'];
 const jNotificationSettings = Joi.array().items(Joi.string().valid(...enums)).unique();
+const jEmailSettings = Joi.array().items(Joi.string().valid('email')).unique();
 
 module.exports.updateSettings = (req, res, next) => {
     logger.debug('updateSettings');
@@ -13,6 +14,7 @@ module.exports.updateSettings = (req, res, next) => {
         groupSettings: jNotificationSettings.required(),
         blogSettings: jNotificationSettings.required(),
         friendSettings: jNotificationSettings.required(),
+        messageSettings: jEmailSettings.required(),
         customSettings: jNotificationSettings.required(),
     });
 

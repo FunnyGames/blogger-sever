@@ -1,5 +1,8 @@
 {
     "jwtPrivateKey": "myPrivateKey",
     "db": "mongodb://localhost/db_blogger",
-    "expirationPeriod": "2592000"
+    "expirationPeriod": "2592000",
+    "cloudinaryCloudName": "cloud_name",
+    "cloudinaryApiKey": "api_key",
+    "cloudinaryApiSecret": "api_secret"
 }

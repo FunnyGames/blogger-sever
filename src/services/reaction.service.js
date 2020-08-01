@@ -177,6 +177,14 @@ module.exports.getUsersReactions = async (userId, blogId, filter, seenIds, limit
                 $match: matchObject
             },
             {
+                $lookup: {
+                    from: 'users',
+                    foreignField: '_id',
+                    localField: 'user._id',
+                    as: 'userX'
+                }
+            },
+            {
                 $sort: { createDate: -1 }
             },
             {
@@ -185,7 +193,8 @@ module.exports.getUsersReactions = async (userId, blogId, filter, seenIds, limit
                     reactionId: '$_id',
                     userId: '$user._id',
                     username: '$user.username',
-                    react: '$react'
+                    react: '$react',
+                    avatar: { $arrayElemAt: ['$userX.avatar', 0] }
                 }
             },
             {

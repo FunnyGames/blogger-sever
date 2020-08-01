@@ -1,5 +1,8 @@
 {
     "jwtPrivateKey": "iQCmbJN9YnQafN7zV2U7dM5PrYNQbcZw",
     "db": "mongodb+srv://blogger:VCqG1StyyiOFolCN@blogger-mh9ef.mongodb.net/test?retryWrites=true",
-    "expirationPeriod": "2592000"
+    "expirationPeriod": "2592000",
+    "cloudinaryCloudName": "ddvmgf6nd",
+    "cloudinaryApiKey": "287985392743888",
+    "cloudinaryApiSecret": "2f3GEIUtKKsYTEtJkYCPlU24NkE"
 }

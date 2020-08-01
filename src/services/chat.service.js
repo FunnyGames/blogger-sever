@@ -194,9 +194,21 @@ module.exports.getChatList = async (userId) => {
     try {
         // Get chat list
         const chats = await chatModel.find({ $or: [{ userId1: userId }, { userId2: userId }] }).select('-__v -createDate').sort('-lastUpdate');
+        const userArray = [];
+        for (let i = 0; i < chats.length; ++i) {
+            let c = chats[i];
+            const uid = c.userId1.toString() === userId ? c.userId2.toString() : c.userId1.toString();
+            userArray.push(uid);
+        }
+        const avatarList = await userModel.find({ _id: { $in: userArray } }).select('avatar');
+        const avatars = {};
+        for (let i = 0; i < avatarList.length; ++i) {
+            let a = avatarList[i];
+            avatars[a._id] = a.avatar;
+        }
 
         // Set it to response
-        response = { chats };
+        response = { chats, avatars };
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -245,7 +257,7 @@ module.exports.blockedUsers = async (userId) => {
                 { userId1: userId, userBlocked2: true },
                 { userId2: userId, userBlocked1: true }
             ]
-        }).select('_id username1 userId1 username2 userId2');
+        }).select('_id username1 userId1 username2 userId2').populate('userId1 userId2', 'avatar');
 
         // Set it to response
         response = { blocked };

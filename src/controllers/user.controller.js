@@ -35,13 +35,14 @@ module.exports.login = async (req, res, next) => {
 
 module.exports.getProfile = async (req, res, next) => {
     logger.info('getProfile');
-    const { uid, username, firstName, lastName, email } = req.decoded;
+    const { uid, username, firstName, lastName, email, avatar } = req.decoded;
     const data = {
         _id: uid,
         username,
         firstName,
         lastName,
-        email
+        email,
+        avatar
     };
 
     res.status(200).send(data);
@@ -217,5 +218,22 @@ module.exports.cancelAccount = async (req, res, next) => {
     const userId = req.decoded.uid;
 
     let response = await cancelUserServices.cancelAccount(username, password, userId);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.uploadAvatar = async (req, res, next) => {
+    logger.info('uploadAvatar');
+    const userId = req.decoded.uid;
+    const image = req.body.image;
+
+    let response = await userServices.uploadAvatar(userId, image);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.deleteAvatar = async (req, res, next) => {
+    logger.info('deleteAvatar');
+    const userId = req.decoded.uid;
+
+    let response = await userServices.deleteAvatar(userId);
     res.status(response.status).send(response.data);
 }

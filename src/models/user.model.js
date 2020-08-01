@@ -48,6 +48,12 @@ const userSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    avatar: {
+        type: String,
+    },
+    avatarId: {
+        type: String,
+    },
     createDate: {
         type: Date,
         default: Date.now

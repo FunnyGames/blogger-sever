@@ -22,6 +22,7 @@ module.exports = async (req, res, next) => {
         req.decoded.email = response.data.email;
         req.decoded.firstName = response.data.firstName;
         req.decoded.lastName = response.data.lastName;
+        req.decoded.avatar = response.data.avatar;
     }
     next();
 }

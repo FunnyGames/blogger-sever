@@ -5,6 +5,7 @@ const userGroupModel = require('../models/usergroup.model');
 const subscriptionModel = require('../models/subscription.model');
 const friendModel = require('../models/friend.model');
 const settingServices = require('../services/settings.service');
+const fileUploadServices = require('./file.upload.service');
 const security = require('../security/security');
 const actions = require('../actions/notification');
 const { notification } = require('../constants/notifications');
@@ -110,14 +111,14 @@ module.exports.getUserById = async (data) => {
     let response = {};
     try {
         // First check if user exists
-        let user = await userModel.findOne({ _id: userId }).select('_id firstName lastName username email');
+        let user = await userModel.findOne({ _id: userId }).select('_id firstName lastName username email avatar');
         if (!user) {
             logger.warn('User not found');
             return responseError(404, 'User not found');
         }
 
         // Set response to { email, firstName, lastName, username }
-        let data = ['_id', 'firstName', 'lastName', 'username'];
+        let data = ['_id', 'firstName', 'lastName', 'username', 'avatar'];
         if (withEmail) data.push('email');
 
         response = _.pick(user, data);
@@ -192,6 +193,7 @@ module.exports.getUsers = async (name, sort, page, limit) => {
                     username: 1,
                     firstName: 1,
                     lastName: 1,
+                    avatar: 1,
                     createDate: 1
                 }
             },
@@ -526,7 +528,16 @@ module.exports.subscriptions = async (userId, name, sort, page, limit) => {
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'subToUserId',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            {
                 $project: {
+                    avatar: { $arrayElemAt: ['$user.avatar', 0] },
                     subToUserId: 1,
                     subToUsername: 1,
                     createDate: 1
@@ -768,7 +779,35 @@ module.exports.friends = async (userId, name, sort, filter, page, limit, filterD
                 }
             },
             {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId1',
+                    foreignField: '_id',
+                    as: 'user1'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId2',
+                    foreignField: '_id',
+                    as: 'user2'
+                }
+            },
+            {
                 $sort: { [key]: order }
+            },
+            {
+                $project: {
+                    pending: 1,
+                    userRequested: 1,
+                    userId1: 1,
+                    username1: 1,
+                    avatar1: { $arrayElemAt: ['$user1.avatar', 0] },
+                    userId2: 1,
+                    username2: 1,
+                    avatar2: { $arrayElemAt: ['$user2.avatar', 0] }
+                }
             },
             {
                 $project: projectObj
@@ -852,4 +891,61 @@ function sendFriendNotification(userId, data) {
         fromUserId
     };
     actions.sendFriendNotification(n, toUserId);
+}
+
+module.exports.uploadAvatar = async (userId, image) => {
+    // Log the function name and the data
+    logger.info(`uploadAvatar - userId: ${userId}, image.length: ${image.length}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        let user = await userModel.findOne({ _id: userId }).select('avatarId');
+        if (user && user.avatarId) {
+            logger.info('Deleting old image - avatarId: ' + user.avatarId);
+            await fileUploadServices.deleteImage(user.avatarId);
+        }
+        let result = await fileUploadServices.uploadImage(userId, image);
+        if (!result) {
+            logger.error('Error uploading avatar');
+            return responseError(400, 'Error uploading avatar');
+        }
+        await userModel.updateOne({ _id: userId }, { $set: { avatar: result.url, avatarId: result.public_id } });
+        response.avatar = result.url;
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.deleteAvatar = async (userId) => {
+    // Log the function name and the data
+    logger.info(`deleteAvatar - userId: ${userId}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        let user = await userModel.findOne({ _id: userId }).select('avatarId');
+        if (!user || !user.avatarId) {
+            logger.error('User has no avatar');
+            return responseSuccess({ ok: 1 });
+        }
+        let result = await fileUploadServices.deleteImage(user.avatarId);
+        if (!result) {
+            logger.error('Error deleting avatar');
+            return responseError(400, 'Error deleting avatar');
+        }
+
+        let update = await userModel.updateOne({ _id: userId }, { $set: { avatar: '', avatarId: '' } });
+        response = { ok: update.ok };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
 }

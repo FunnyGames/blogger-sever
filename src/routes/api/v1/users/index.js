@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/', limits: { fileSize: 5 * 1024 * 1024, fieldSize: 5 * 1024 * 1024 } });
 
 const cValidator = require('../../../../validators/common.validator');
 const uValidator = require('../../../../validators/user.validator');
@@ -12,6 +14,9 @@ router.put('/update/profile', uValidator.updateProfile, controller.updateProfile
 router.put('/update/password', uValidator.updatePassword, controller.updatePassword);
 router.put('/available', uValidator.available, controller.available);
 router.put('/cancel', uValidator.cancelAccount, controller.cancelAccount);
+
+router.post('/avatar', upload.single('avatar'), uValidator.uploadAvatar, controller.uploadAvatar);
+router.delete('/avatar', controller.deleteAvatar);
 
 router.get('/subscribe/:id', cValidator.paramId, controller.subscribe);
 router.get('/unsubscribe/:id', cValidator.paramId, controller.unsubscribe);

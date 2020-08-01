@@ -270,7 +270,7 @@ module.exports.getBlogById = async (blogId, userId, guest) => {
     let response = {};
     try {
         // Find blog
-        let blog = await blogModel.findOne({ _id: blogId }).select('-__v').populate('owner', 'username');
+        let blog = await blogModel.findOne({ _id: blogId }).select('-__v').populate('owner', 'username avatar');
         if (!blog) {
             logger.error('Blog not found');
             return responseError(404, 'Blog not found');
