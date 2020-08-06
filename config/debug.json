@@ -4,5 +4,7 @@
     "expirationPeriod": "2592000",
     "cloudinaryCloudName": "cloud_name",
     "cloudinaryApiKey": "api_key",
-    "cloudinaryApiSecret": "api_secret"
+    "cloudinaryApiSecret": "api_secret",
+    "sendGridApi": "send_grid_api",
+    "emailFrom": "fgmmaker@gmail.com"
 }

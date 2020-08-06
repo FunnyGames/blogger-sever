@@ -33,6 +33,23 @@ module.exports.login = async (req, res, next) => {
     }
 }
 
+module.exports.resetPasswordRequest = async (req, res, next) => {
+    logger.info('resetPasswordRequest');
+    const email = req.body.email;
+
+    let response = await userServices.resetPasswordRequest(email);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.resetPassword = async (req, res, next) => {
+    logger.info('resetPassword');
+    const token = req.params.token;
+    const newPassword = req.body.newPassword;
+
+    let response = await userServices.resetPassword(token, newPassword);
+    res.status(response.status).send(response.data);
+}
+
 module.exports.getProfile = async (req, res, next) => {
     logger.info('getProfile');
     const { uid, username, firstName, lastName, email, avatar } = req.decoded;

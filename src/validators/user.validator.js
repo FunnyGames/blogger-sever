@@ -85,3 +85,21 @@ module.exports.uploadAvatar = (req, res, next) => {
 
     validate(schema, req.body, res, next);
 }
+
+module.exports.resetPasswordRequest = (req, res, next) => {
+    logger.debug('resetPasswordRequest');
+    const schema = Joi.object({
+        email: jEmail.required()
+    });
+
+    validate(schema, req.body, res, next);
+}
+
+module.exports.resetPassword = (req, res, next) => {
+    logger.debug('resetPassword');
+    const schema = Joi.object({
+        newPassword: jPassword.required()
+    });
+
+    validate(schema, req.body, res, next);
+}

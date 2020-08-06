@@ -64,3 +64,22 @@ module.exports.shortenMessage = (msg, length = 50) => {
     if (!msg) return '';
     return (msg.length > length ? msg.substring(0, length - 3) + '...' : msg);
 }
+
+module.exports.encodeToken = (key, email, expire) => {
+    const buff = new Buffer(key + ';' + email + ';' + expire.getTime());
+    return buff.toString('base64');
+}
+
+module.exports.decodeToken = (token) => {
+    const buff = Buffer.from(token, 'base64');
+    const text = buff.toString('ascii');
+    const splited = text.split(';');
+    const key = splited[0];
+    const email = splited[1];
+    const expire = splited[2];
+    return {
+        key,
+        email,
+        expire
+    };
+}

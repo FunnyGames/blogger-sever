@@ -11,6 +11,10 @@ const actions = require('../actions/notification');
 const { notification } = require('../constants/notifications');
 const _ = require('lodash');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
+const shortid = require('shortid');
+const moment = require('moment');
+const emailServices = require('./email.service');
+const utils = require('../common/utils');
 
 module.exports.register = async (data) => {
     // Log the function name and the data
@@ -100,6 +104,78 @@ module.exports.login = async (username, password) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+module.exports.resetPasswordRequest = async (email) => {
+    logger.info(`resetPasswordRequest - email: ${email}`);
+    const ok = { ok: 1 };
+    try {
+        const email_lower = email.toLowerCase();
+        const user = await userModel.findOne({ email_lower });
+        if (!user) {
+            logger.error('User not found with email: ' + email_lower);
+            return responseSuccess(ok);
+        }
+        const username = user.username;
+        const userId = user._id;
+        const key = shortid();
+        const expire = moment().add(1, 'day').toDate();
+        const uid = utils.encodeToken(key, email_lower, expire);
+
+        const result = await emailServices.sendResetPassword(email_lower, username, uid);
+        if (result && result.error) {
+            logger.error('Error sending email');
+            return responseError(500, SERVER_ERROR);
+        }
+        await userModel.updateOne({ _id: userId }, { $set: { resetPassword: uid } });
+    } catch (error) {
+        logger.error(error.message);
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(ok);
+}
+
+module.exports.resetPassword = async (token, newPassword) => {
+    logger.info(`resetPassword - token: ${token}`);
+    const ok = { ok: 1 };
+    try {
+        const { key, email } = utils.decodeToken(token);
+
+        const email_lower = email.toLowerCase();
+        const user = await userModel.findOne({ email_lower });
+        if (!user) {
+            logger.error('User not found with email: ' + email_lower);
+            return responseError(404, 'User not found');
+        }
+        const userId = user._id;
+        const uid = user.resetPassword;
+        if (!uid) {
+            logger.error('User did not reset password');
+            return responseError(402, 'Token not exists');
+        }
+        const dbToken = utils.decodeToken(uid);
+        const expire = dbToken.expire;
+        const expireTime = new Date(expire).getTime();
+        const now = new Date().getTime();
+        if (expireTime < now) {
+            logger.error('Token is expired');
+            return responseError(402, 'Token is expired');
+        }
+        const userKey = dbToken.key;
+        if (key !== userKey || token !== uid) {
+            logger.error('Bad key: ' + key + ', expected: ' + userKey);
+            return responseError(402, 'Invalid key');
+        }
+
+        // Hash the password
+        const password = await security.crypt(newPassword);
+
+        await userModel.updateOne({ _id: userId }, { $set: { password }, $unset: { resetPassword: '' } });
+    } catch (error) {
+        logger.error(error.message);
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(ok);
 }
 
 module.exports.getUserById = async (data) => {

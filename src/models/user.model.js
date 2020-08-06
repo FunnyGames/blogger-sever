@@ -48,6 +48,9 @@ const userSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    resetPassword: {
+        type: String,
+    },
     avatar: {
         type: String,
     },

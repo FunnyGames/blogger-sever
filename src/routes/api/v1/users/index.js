@@ -10,6 +10,9 @@ const controller = require('../../../../controllers/user.controller');
 router.post('/register', uValidator.register, controller.register);
 router.post('/login', uValidator.login, controller.login);
 
+router.post('/reset/request', uValidator.resetPasswordRequest, controller.resetPasswordRequest);
+router.post('/reset/password/:token', uValidator.resetPassword, controller.resetPassword);
+
 router.put('/update/profile', uValidator.updateProfile, controller.updateProfile);
 router.put('/update/password', uValidator.updatePassword, controller.updatePassword);
 router.put('/available', uValidator.available, controller.available);
