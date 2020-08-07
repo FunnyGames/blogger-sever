@@ -38,3 +38,12 @@ module.exports.sendResetPassword = async (to, username, uid) => {
 
     return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
 }
+
+module.exports.sendPrivateMessage = async (to, fromUser, username, chatId) => {
+    // Log the function name and the data
+    logger.info(`sendPrivateMessage - to: ${to}, fromUser: ${fromUser}, username: ${username}, chatId: ${chatId}`);
+    let dynamic_template_data = { username, fromUser, chatId };
+    let template_id = 'd-4007fb1700b6455586a80e5095cb9723';
+
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+}

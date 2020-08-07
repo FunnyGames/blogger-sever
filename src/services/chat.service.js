@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const chatModel = require('../models/chat.model');
 const messageModel = require('../models/message.model');
 const userModel = require('../models/user.model');
+const emailServices = require('./email.service');
+const settingsServices = require('./settings.service');
 const utils = require('../common/utils');
 const socket = require('../socket/socket');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
@@ -99,7 +101,11 @@ module.exports.createMessage = async (userId, username, chatId, data) => {
         const meUser1 = chat.userId1.toString() === userId;
         const otherUser = meUser1 ? chat.userId2 : chat.userId1;
         message.fromUsername = meUser1 ? chat.username1 : chat.username2;
-        socket.send(otherUser, socket.MESSAGE, message);
+        let sent = socket.send(otherUser, socket.MESSAGE, message);
+        if (!sent) {
+            let toUsername = meUser1 ? chat.username2 : chat.username1;
+            sendPrivateMessageByEmail(message.fromUsername, toUsername, otherUser, chatId);
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -107,6 +113,26 @@ module.exports.createMessage = async (userId, username, chatId, data) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+const sendPrivateMessageByEmail = async (fromUsername, toUsername, toUserId, chatId) => {
+    logger.info(`sendPrivateMessageByEmail - fromUsername: ${fromUsername}, toUsername: ${toUsername}, toUserId: ${toUserId}, chatId: ${chatId}`);
+    let userTo = await userModel.findOne({ _id: toUserId }).select('email');
+    if (userTo) {
+        let to = userTo.email;
+        let settings = await settingsServices.getSettings(toUserId);
+        if (settings.status !== 200) {
+            logger.error('Error getting settings for user: ' + toUsername);
+            return;
+        }
+        let emailSettings = settings.data.messageSettings;
+        if (emailSettings.includes('email')) {
+            await emailServices.sendPrivateMessage(to, fromUsername, toUsername, chatId);
+            logger.info('Email sent successfully to: ' + to);
+        } else {
+            logger.info(`User ${toUsername} disabled email for private messages`);
+        }
+    }
 }
 
 module.exports.getMessages = async (userId, chatId, seenIds, limit) => {
