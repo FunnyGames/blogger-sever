@@ -312,6 +312,24 @@ module.exports.getUsers = async (name, sort, page, limit) => {
     return responseSuccess(response);
 }
 
+module.exports.bulkUsers = async (userIds) => {
+    // Log the function name and the data
+    logger.info(`bulkUsers - userIds: ${userIds}`);
+
+    // Set empty response
+    let response = {};
+    try {
+        // Find all users but don't return sensitive information
+        response = await userModel.find({ _id: { $in: userIds } }).select('firstName lastName email');
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
 module.exports.updateProfile = async (userId, data) => {
     // Log the function name and the data
     logger.info(`updateProfile - userId: ${userId}, data: ${data}`);
@@ -959,8 +977,14 @@ function sendFriendNotification(userId, data) {
     const toUserId = userId === userId1 ? userId2 : userId1;
     const fromUsername = userId === userId1 ? data.username1 : data.username2;
     const fromUserId = userId === userId1 ? userId1 : userId2;
+    const accept = new Buffer(`${data._id};accept`).toString('base64').replace(/=/g, '-');
+    const decline = new Buffer(`${data._id};decline`).toString('base64').replace(/=/g, '-');
 
     let n = {
+        linkToUserId: fromUserId,
+        userId: toUserId,
+        accept,
+        decline,
         content: data,
         kind: notification.friend_request,
         fromUsername,

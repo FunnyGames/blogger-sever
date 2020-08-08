@@ -1,7 +1,10 @@
 const notificationServices = require('../services/notification.service');
 const setttingServices = require('../services/settings.service');
+const userServices = require('../services/user.service');
+const emailServices = require('../services/email.service');
 const { notification: type } = require('../constants/notifications');
 const socket = require('../socket/socket');
+const utils = require('../common/utils');
 const logger = require('../common/logger')(__filename);
 
 // This file is responsible for creating an sending notifications
@@ -20,6 +23,9 @@ module.exports.sendNotification = async (data, members) => {
             socket.send(to, event, data);
         }
     }
+    if (emailMembers.length > 0) {
+        await sendEmailNotification(data, emailMembers);
+    }
 }
 
 module.exports.sendFriendNotification = async (data, member) => {
@@ -30,6 +36,64 @@ module.exports.sendFriendNotification = async (data, member) => {
     if (webMember) {
         const event = socket.FRIEND;
         socket.send(webMember, event, data);
+    }
+    if (emailMember) {
+        await sendEmailNotification(data, [emailMember]);
+    }
+}
+
+async function sendEmailNotification(data, emailMembers) {
+    logger.info(`sendEmailNotification - data: ${JSON.stringify(data)}, emailMembers: ${emailMembers}`);
+    let { fromUsername, sourceName, sourceId, userId, accept, decline, content, linkToUserId } = data;
+    let to, username;
+    if (emailMembers.length === 1 && data.kind !== type.group_add && data.kind !== type.blog_new) {
+        let userData = {
+            userId,
+            withEmail: true,
+            reqUserId: null,
+            withSub: false,
+            withFriend: false
+        };
+        let singleUser = await userServices.getUserById(userData);
+        if (singleUser.status !== 200) {
+            logger.error('Error getting user - ' + userId);
+            return;
+        }
+        let u = singleUser.data;
+        to = u.email;
+        username = u.username;
+    } else {
+        let multipleUsers = await userServices.bulkUsers(emailMembers);
+        if (multipleUsers.status !== 200) {
+            logger.error('Error getting users - ' + emailMembers);
+            return;
+        }
+        let users = multipleUsers.data;
+        to = [];
+        for (let i = 0; i < users.length; ++i) {
+            let u = {
+                email: users[i].email
+            };
+            to.push(u);
+        }
+    }
+    switch (data.kind) {
+        case type.blog_new:
+            await emailServices.sendBlogNotification(to, fromUsername, sourceName, sourceId);
+            break;
+        case type.comment:
+            let comment = utils.shortenMessage(content);
+            await emailServices.sendCommentNotification(to, fromUsername, username, sourceName, sourceId, comment);
+            break;
+        case type.react:
+            await emailServices.sendReactionNotification(to, fromUsername, username, sourceName, sourceId);
+            break;
+        case type.group_add:
+            await emailServices.sendGroupNotification(to, fromUsername, sourceName, sourceId);
+            break;
+        case type.friend_request:
+            await emailServices.sendFriendRequestNotification(to, fromUsername, username, linkToUserId, accept, decline);
+            break;
     }
 }
 
