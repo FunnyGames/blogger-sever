@@ -202,7 +202,7 @@ module.exports.subscribers = async (req, res, next) => {
     const name = req.query.name;
     const sort = utils.getSort(req.query);
 
-    let response = await userServices.subscriptions(userId, name, sort, page, limit, true);
+    let response = await userServices.subscribers(userId, name, sort, page, limit);
     res.status(response.status).send(response.data);
 }
 

@@ -673,9 +673,9 @@ module.exports.unsubscribe = async (userId, subToUserId) => {
     return responseSuccess(response);
 }
 
-module.exports.subscriptions = async (userId, name, sort, page, limit, subToMe) => {
+module.exports.subscriptions = async (userId, name, sort, page, limit) => {
     // Log the function name and the data
-    logger.info(`subscriptions - userId: ${userId}, name: ${name}, sort: ${sort}, page: ${page}, limit: ${limit}, subToMe: ${subToMe}`);
+    logger.info(`subscriptions - userId: ${userId}, name: ${name}, sort: ${sort}, page: ${page}, limit: ${limit}`);
 
     // Set default name to empty string
     name = name ? name : '';
@@ -700,19 +700,12 @@ module.exports.subscriptions = async (userId, name, sort, page, limit, subToMe) 
                 break;
         }
 
-        // subToMe = true - My subscribers
-        // else - Who I'm subsribed to
-        let match = {};
-        if (subToMe) {
-            match.subToUserId = mongoose.Types.ObjectId(userId);
-        } else {
-            match.userId = mongoose.Types.ObjectId(userId);
-        }
-
         // Find all subscriptions matching the name and sort them by create date
         let subs = await subscriptionModel.aggregate([
             {
-                $match: match
+                $match: {
+                    userId: mongoose.Types.ObjectId(userId)
+                }
             },
             {
                 $lookup: {
@@ -733,6 +726,99 @@ module.exports.subscriptions = async (userId, name, sort, page, limit, subToMe) 
             {
                 $match: {
                     subToUsername: { $regex: name, $options: 'ig' }
+                }
+            },
+            {
+                $sort: { [key]: order }
+            },
+            {
+                $facet: {
+                    metadata: [{ $count: 'total' }, { $addFields: { page } }],
+                    users: [{ $skip: skip }, { $limit: limit }]
+                }
+            },
+            {
+                $project: {
+                    metadata: { $arrayElemAt: ['$metadata', 0] },
+                    users: 1
+                }
+            }
+        ]);
+        // The result will come as array - [{ metadata: {...}, users: [...] }]
+        // So convert the array to object
+        subs = subs[0];
+
+        // Check if metadata is missing (happens if nothing found)
+        if (!subs.metadata) {
+            subs.metadata = {
+                total: 0,
+                page
+            }
+        }
+        // Set it to response
+        response = subs;
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.subscribers = async (userId, name, sort, page, limit) => {
+    // Log the function name and the data
+    logger.info(`subscribers - userId: ${userId}, name: ${name}, sort: ${sort}, page: ${page}, limit: ${limit}`);
+
+    // Set default name to empty string
+    name = name ? name : '';
+
+    // Set empty response
+    let response = {};
+    try {
+        // Calculate the skip by page with limit
+        let skip = (page - 1) * limit;
+
+        // Sort
+        let { key, order } = sort;
+        // This will limit sort by
+        switch (key) {
+            case 'username':
+                key = 'subToUsername';
+            case 'createDate':
+                break;
+            default:
+                key = 'createDate';
+                order = 1;
+                break;
+        }
+
+        // Find all subscriptions matching the name and sort them by create date
+        let subs = await subscriptionModel.aggregate([
+            {
+                $match: {
+                    subToUserId: mongoose.Types.ObjectId(userId)
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            {
+                $project: {
+                    avatar: { $arrayElemAt: ['$user.avatar', 0] },
+                    userId: 1,
+                    username: 1,
+                    createDate: 1
+                }
+            },
+            {
+                $match: {
+                    username: { $regex: name, $options: 'ig' }
                 }
             },
             {
