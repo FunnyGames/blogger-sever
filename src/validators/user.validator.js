@@ -9,6 +9,8 @@ const jLastName = Joi.string().min(1).max(50);
 const jEmail = Joi.string().min(5).max(120).email({ minDomainSegments: 2 });
 const jImage = Joi.string().min(25);
 
+module.exports.jEmail = jEmail;
+
 module.exports.register = (req, res, next) => {
     logger.debug('register');
     const schema = Joi.object({

@@ -16,6 +16,7 @@ const guest = [
     { url: '/api/v1/blogs', method: GET },
     { url: '/api/v1/comments/(:id)/get', method: PUT },
     { url: '/api/v1/reactions/(:id)', method: GET },
+    { url: '/api/v1/settings/unsubscribe', method: GET },
 ];
 
 // List of addresses that user who didn't confirm his email is allowed to visit

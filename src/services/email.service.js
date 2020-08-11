@@ -1,27 +1,36 @@
 const logger = require('../common/logger')(__filename);
 const sgMail = require('@sendgrid/mail');
 const config = require('config');
+const utils = require('../common/utils');
 const { isArray } = require('lodash');
 
 sgMail.setApiKey(config.get('sendGridApi'));
 
-module.exports.sendEmailTemplate = async (to, template_id, dynamic_template_data) => {
+module.exports.sendEmailTemplate = async (to, template_id, dynamic_template_data, unsub) => {
     // Log the function name and the data
-    logger.info(`sendEmailTemplate - to: ${JSON.stringify(to)}, template_id: ${template_id}, dynamic_template_data: ${JSON.stringify(dynamic_template_data)}`);
+    logger.info(`sendEmailTemplate - to: ${JSON.stringify(to)}, template_id: ${template_id}, dynamic_template_data: ${JSON.stringify(dynamic_template_data)}, unsub: ${unsub}`);
 
     try {
         if (!isArray(to)) {
-            to = [{ email: to }];
+            to = [to];
         }
+        const personalizations = to.map(email => {
+            if (unsub) {
+                let time = (new Date()).getTime();
+                let token = utils.encodeUscubscribeEmailToken(email, unsub, time);
+                let unsubscribe = `email=${to}&token=${token}&t=${time}`;
+                dynamic_template_data.unsubscribe = '?' + encodeURIComponent(unsubscribe);
+            }
+            return {
+                to: [{ email }],
+                dynamic_template_data: { ...dynamic_template_data }
+            }
+        });
+
         const msg = {
             from: config.get('emailFrom'),
             template_id,
-            personalizations: [
-                {
-                    to,
-                    dynamic_template_data
-                }
-            ]
+            personalizations
         };
 
         return await sgMail.send(msg);
@@ -48,7 +57,7 @@ module.exports.sendPrivateMessage = async (to, fromUser, username, chatId) => {
     let dynamic_template_data = { username, fromUser, chatId };
     let template_id = 'd-4007fb1700b6455586a80e5095cb9723';
 
-    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data, 'messageSettings');
 }
 
 module.exports.sendCommentNotification = async (to, fromUser, username, blogName, blogId, comment) => {
@@ -57,7 +66,7 @@ module.exports.sendCommentNotification = async (to, fromUser, username, blogName
     let dynamic_template_data = { username, fromUser, blogName, blogId, comment };
     let template_id = 'd-8d8341b81fed4c8090be278f8c91f3ca';
 
-    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data, 'commentSettings');
 }
 
 module.exports.sendReactionNotification = async (to, fromUser, username, blogName, blogId) => {
@@ -66,7 +75,7 @@ module.exports.sendReactionNotification = async (to, fromUser, username, blogNam
     let dynamic_template_data = { username, fromUser, blogName, blogId };
     let template_id = 'd-6ace51fecafa46d0a72aa0a82104dd8e';
 
-    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data, 'reactSettings');
 }
 
 module.exports.sendBlogNotification = async (to, fromUser, blogName, blogId) => {
@@ -75,7 +84,7 @@ module.exports.sendBlogNotification = async (to, fromUser, blogName, blogId) => 
     let dynamic_template_data = { fromUser, blogName, blogId };
     let template_id = 'd-c6efaccb14f34869a0203f02da77f690';
 
-    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data, 'blogSettings');
 }
 
 module.exports.sendGroupNotification = async (to, fromUser, groupName, groupId) => {
@@ -84,7 +93,7 @@ module.exports.sendGroupNotification = async (to, fromUser, groupName, groupId) 
     let dynamic_template_data = { fromUser, groupName, groupId };
     let template_id = 'd-21c8ba14599446b1bba0b57827b6e895';
 
-    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data, 'groupSettings');
 }
 
 module.exports.sendFriendRequestNotification = async (to, fromUser, username, userId, accept, decline) => {
@@ -93,7 +102,7 @@ module.exports.sendFriendRequestNotification = async (to, fromUser, username, us
     let dynamic_template_data = { username, fromUser, accept, decline, userId };
     let template_id = 'd-890018cda6d14e3fb6113db9abdcdbba';
 
-    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data, 'friendSettings');
 }
 
 module.exports.sendConfirmEmail = async (to, username, link) => {

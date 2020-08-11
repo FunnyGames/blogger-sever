@@ -186,7 +186,7 @@ module.exports.resetPasswordRequest = async (email) => {
         const userId = user._id;
         const key = shortid();
         const expire = moment().add(1, 'day').toDate();
-        const uid = utils.encodeToken(key, email_lower, expire);
+        const uid = utils.encodeResetPasswordToken(key, email_lower, expire);
 
         const result = await emailServices.sendResetPassword(email_lower, username, uid);
         if (result && result.error) {
@@ -205,7 +205,7 @@ module.exports.resetPassword = async (token, newPassword) => {
     logger.info(`resetPassword - token: ${token}`);
     const ok = { ok: 1 };
     try {
-        const { key, email } = utils.decodeToken(token);
+        const { key, email } = utils.decodeResetPasswordToken(token);
 
         const email_lower = email.toLowerCase();
         const user = await userModel.findOne({ email_lower });
@@ -219,7 +219,7 @@ module.exports.resetPassword = async (token, newPassword) => {
             logger.error('User did not reset password');
             return responseError(402, 'Token not exists');
         }
-        const dbToken = utils.decodeToken(uid);
+        const dbToken = utils.decodeResetPasswordToken(uid);
         const expire = dbToken.expire;
         const expireTime = new Date(expire).getTime();
         const now = new Date().getTime();

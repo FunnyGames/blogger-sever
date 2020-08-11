@@ -1,3 +1,6 @@
+const cryptoJS = require('crypto-js');
+const config = require('config');
+
 module.exports.isSuperset = (set, subset) => {
     for (var elem of subset) {
         if (!set.has(elem)) {
@@ -65,12 +68,12 @@ module.exports.shortenMessage = (msg, length = 50) => {
     return (msg.length > length ? msg.substring(0, length - 3) + '...' : msg);
 }
 
-module.exports.encodeToken = (key, email, expire) => {
+module.exports.encodeResetPasswordToken = (key, email, expire) => {
     const buff = new Buffer(key + ';' + email + ';' + expire.getTime());
     return buff.toString('base64');
 }
 
-module.exports.decodeToken = (token) => {
+module.exports.decodeResetPasswordToken = (token) => {
     const buff = Buffer.from(token, 'base64');
     const text = buff.toString('ascii');
     const splited = text.split(';');
@@ -81,5 +84,31 @@ module.exports.decodeToken = (token) => {
         key,
         email,
         expire
+    };
+}
+
+module.exports.encodeUscubscribeEmailToken = (email, setting, time) => {
+    const signKey = config.get('emailSignKey');
+    const msg = email + ';' + setting;
+    const ciphertext = cryptoJS.AES.encrypt(msg, signKey + time).toString();
+    const buff = Buffer.from(ciphertext);
+    return buff.toString('base64');
+}
+
+module.exports.decodeUscubscribeEmailToken = (token, time) => {
+    const signKey = config.get('emailSignKey');
+    const buff = Buffer.from(token, 'base64');
+    const text = buff.toString('ascii');
+    const bytes = cryptoJS.AES.decrypt(text, signKey + time);
+    const originalText = bytes.toString(cryptoJS.enc.Utf8);
+
+    const splited = originalText.split(';');
+    if (splited.length != 2) return null;
+    const email = splited[0];
+    const setting = splited[1];
+    if (!email || !setting) return null;
+    return {
+        email,
+        setting
     };
 }

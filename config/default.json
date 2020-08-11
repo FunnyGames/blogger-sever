@@ -2,6 +2,7 @@
     "jwtPrivateKey": "myPrivateKey",
     "db": "mongodb://localhost/db_blogger",
     "expirationPeriod": "2592000",
+    "emailSignKey": "Cu92cZmVQERMfRyX",
     "cloudinaryCloudName": "ddvmgf6nd",
     "cloudinaryApiKey": "287985392743888",
     "cloudinaryApiSecret": "2f3GEIUtKKsYTEtJkYCPlU24NkE",
