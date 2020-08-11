@@ -33,6 +33,37 @@ module.exports.login = async (req, res, next) => {
     }
 }
 
+module.exports.resendEmailConfirm = async (req, res, next) => {
+    logger.info('resendEmailConfirm');
+    const { uid, username, email, waitingForEmailConfirmation } = req.decoded;
+    if (!waitingForEmailConfirmation) {
+        res.status(400).send({ error: 'Email already verified' });
+        return;
+    }
+
+    let response = await userServices.resendEmailConfirm(uid, username, email);
+    res.status(response.status).send(response.data);
+}
+
+module.exports.confirmEmail = async (req, res, next) => {
+    logger.info('confirmEmail');
+    const { uid, waitingForEmailConfirmation } = req.decoded;
+    if (!waitingForEmailConfirmation) {
+        res.status(400).send({ error: 'Email already verified' });
+        return;
+    }
+    const token = req.params.token;
+
+    let response = await userServices.confirmEmail(uid, token);
+    if (response.status != 200) {
+        res.status(response.status).send(response.data);
+    } else {
+        let jwt = response.data.jwt;
+        res.cookie(COOKIE_JWT, jwt);
+        res.send({ jwt });
+    }
+}
+
 module.exports.resetPasswordRequest = async (req, res, next) => {
     logger.info('resetPasswordRequest');
     const email = req.body.email;
@@ -52,13 +83,14 @@ module.exports.resetPassword = async (req, res, next) => {
 
 module.exports.getProfile = async (req, res, next) => {
     logger.info('getProfile');
-    const { uid, username, firstName, lastName, email, avatar } = req.decoded;
+    const { uid, username, firstName, lastName, email, avatar, waitingForEmailConfirmation } = req.decoded;
     const data = {
         _id: uid,
         username,
         firstName,
         lastName,
         email,
+        waitingForEmailConfirmation,
         avatar
     };
 

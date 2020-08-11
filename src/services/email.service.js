@@ -95,3 +95,12 @@ module.exports.sendFriendRequestNotification = async (to, fromUser, username, us
 
     return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
 }
+
+module.exports.sendConfirmEmail = async (to, username, link) => {
+    // Log the function name and the data
+    logger.info(`sendConfirmEmail - to: ${to}, username: ${username}, link: ${link}`);
+    let dynamic_template_data = { username, link };
+    let template_id = 'd-81b2ab6e192e4e58b129083c8772bb3f';
+
+    return await this.sendEmailTemplate(to, template_id, dynamic_template_data);
+}

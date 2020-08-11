@@ -1,4 +1,5 @@
 const logger = require('../common/logger')(__filename);
+const userServices = require('./user.service');
 const userModel = require('../models/user.model');
 const userGroupModel = require('../models/usergroup.model');
 const userBlogModel = require('../models/userblog.model');
@@ -97,6 +98,10 @@ module.exports.cancelAccount = async (username, password, userId) => {
         // User settings
         d = await settingModel.deleteOne({ userId });
         logger.info('Delete user settings of user - count: ' + d.deletedCount);
+
+        // Avatar
+        d = await userServices.deleteAvatar(userId);
+        logger.info('Delete user avatar - ok: ' + d.data.ok);
 
         // User
         d = await userModel.deleteOne({ _id: userId });

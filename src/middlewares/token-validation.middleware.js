@@ -24,6 +24,15 @@ module.exports = (req, res, next) => {
                 }
             }
             req.decoded = decoded;
+
+            // Check if user has confirmed their email, if not, let them be guests
+            if (decoded.waitingForEmailConfirmation) {
+                if (!security.isConfirmEmailUserUrl(req)) {
+                    logger.warn('Waiting for Email Confirmation');
+                    res.status(401).send({ error: 'Waiting for Email Confirmation.', emailConfirm: true });
+                    return;
+                }
+            }
             next();
         } catch (err) {
             logger.error('Invalid token');

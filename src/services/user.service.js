@@ -40,6 +40,10 @@ module.exports.register = async (data) => {
         // Hash the password
         data.password = await security.crypt(data.password);
 
+        // Generate confirm email token
+        let link = shortid();
+        data.confirmEmailToken = link;
+
         // Create the user and save in DB
         data.email_lower = data.email;
         data.username_lower = data.username;
@@ -51,7 +55,8 @@ module.exports.register = async (data) => {
         // If didn't throw exception then `user` exists
         // Create jwt for user
         let jwtData = {
-            uid: user._id
+            uid: user._id,
+            waitingForEmailConfirmation: true
         };
         // We don't put expiration date in token because we let server decide the expiration
         // JWT adds automatically creation date - so it's enough
@@ -59,6 +64,8 @@ module.exports.register = async (data) => {
         let jwt = security.signJwt(jwtData);
         // Response will be: { jwt: "<JWT>" }
         response = { jwt };
+
+        emailServices.sendConfirmEmail(user.email, user.username, link);
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -89,6 +96,65 @@ module.exports.login = async (username, password) => {
             return responseError(400, 'Username or password are invalid');
         }
 
+        // Create jwt for user
+        let jwtData = {
+            uid: user._id
+        };
+        if (!user.emailConfirmed) {
+            jwtData.waitingForEmailConfirmation = true;
+        }
+
+        let jwt = security.signJwt(jwtData);
+        // Response will be: { jwt: "<JWT>" }
+        response = { jwt };
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.resendEmailConfirm = async (uid, username, email) => {
+    // Log the function name and the data
+    logger.info(`resendEmailConfirm - uid: ${uid}, username: ${username}, email: ${email}`);
+
+    // Set empty response
+    let response = { ok: 1 };
+    try {
+        let link = shortid();
+        await userModel.updateOne({ _id: uid }, { $set: { confirmEmailToken: link } });
+        let res = await emailServices.sendConfirmEmail(email, username, link);
+        if (res.error) {
+            return responseError(500, res.error);
+        }
+    } catch (e) {
+        // Catch error and log it
+        logger.error(e.message);
+        // Send to client that server error occured
+        return responseError(500, SERVER_ERROR);
+    }
+    return responseSuccess(response);
+}
+
+module.exports.confirmEmail = async (uid, token) => {
+    // Log the function name and the data
+    logger.info('confirmEmail - uid: ' + uid + ', token: ' + token);
+
+    // Set empty response
+    let response = {};
+    try {
+        let user = await userModel.findOne({ _id: uid }).select('confirmEmailToken');
+        if (!user) {
+            logger.error('User not found');
+            return responseError(404, 'User not found');
+        }
+        if (user.confirmEmailToken !== token) {
+            logger.warn('Invalid token - ' + token + ' - expected: ' + user.confirmEmailToken);
+            return responseError(400, 'Invalid token');
+        }
+        await userModel.updateOne({ _id: uid }, { $unset: { confirmEmailToken: '' }, $set: { emailConfirmed: true } });
         // Create jwt for user
         let jwtData = {
             uid: user._id
@@ -337,6 +403,26 @@ module.exports.updateProfile = async (userId, data) => {
     // Set empty response
     let response = {};
     try {
+        // Check if email is changed
+        let user = await userModel.findOne({ _id: userId }).select('username email email_lower emailConfirmed');
+        if (!user) {
+            logger.error('User not found');
+            return responseError(404, 'User not found');
+        }
+        if (data.email) {
+            data.email_lower = data.email.toLowerCase();
+            if (user.email_lower !== data.email_lower) {
+                let e = await userModel.findOne({ email_lower: data.email_lower }).select('username');
+                if (e && e._id.toString() !== user._id.toString()) {
+                    logger.error('Email already takeb by user: ' + e.username);
+                    return responseError(400, 'Email already taken');
+                } else if (!user.emailConfirmed) {
+                    logger.info('Sending verification to new email: ' + data.email);
+                    await this.resendEmailConfirm(user._id, user.username, data.email);
+                }
+            }
+        }
+
         // Update the DB
         let res = await userModel.updateOne({ _id: userId }, { $set: data });
 

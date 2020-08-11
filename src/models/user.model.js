@@ -48,6 +48,14 @@ const userSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    emailConfirmed: {
+        type: Boolean,
+        default: false,
+        required: true
+    },
+    confirmEmailToken: {
+        type: String,
+    },
     resetPassword: {
         type: String,
     },
