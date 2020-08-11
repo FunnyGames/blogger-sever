@@ -27,6 +27,7 @@ router.delete('/avatar', controller.deleteAvatar);
 router.get('/subscribe/:id', cValidator.paramId, controller.subscribe);
 router.get('/unsubscribe/:id', cValidator.paramId, controller.unsubscribe);
 router.get('/subscriptions', cValidator.pagination, controller.subscriptions);
+router.get('/subscribers', cValidator.pagination, controller.subscribers);
 
 router.get('/friends/:id/friend', cValidator.paramId, controller.friend);
 router.get('/friends/:id/unfriend', cValidator.paramId, controller.unfriend);

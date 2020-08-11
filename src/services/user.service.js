@@ -673,9 +673,9 @@ module.exports.unsubscribe = async (userId, subToUserId) => {
     return responseSuccess(response);
 }
 
-module.exports.subscriptions = async (userId, name, sort, page, limit) => {
+module.exports.subscriptions = async (userId, name, sort, page, limit, subToMe) => {
     // Log the function name and the data
-    logger.info(`subscriptions - userId: ${userId}, name: ${name}, sort: ${sort}, page: ${page}, limit: ${limit}`);
+    logger.info(`subscriptions - userId: ${userId}, name: ${name}, sort: ${sort}, page: ${page}, limit: ${limit}, subToMe: ${subToMe}`);
 
     // Set default name to empty string
     name = name ? name : '';
@@ -700,12 +700,19 @@ module.exports.subscriptions = async (userId, name, sort, page, limit) => {
                 break;
         }
 
+        // subToMe = true - My subscribers
+        // else - Who I'm subsribed to
+        let match = {};
+        if (subToMe) {
+            match.subToUserId = mongoose.Types.ObjectId(userId);
+        } else {
+            match.userId = mongoose.Types.ObjectId(userId);
+        }
+
         // Find all subscriptions matching the name and sort them by create date
         let subs = await subscriptionModel.aggregate([
             {
-                $match: {
-                    userId: mongoose.Types.ObjectId(userId)
-                }
+                $match: match
             },
             {
                 $lookup: {

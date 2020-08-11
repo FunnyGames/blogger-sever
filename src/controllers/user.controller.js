@@ -194,6 +194,18 @@ module.exports.subscriptions = async (req, res, next) => {
     res.status(response.status).send(response.data);
 }
 
+module.exports.subscribers = async (req, res, next) => {
+    logger.info('subscribers');
+    const userId = req.decoded.uid;
+    const page = req.query.page;
+    const limit = req.query.limit;
+    const name = req.query.name;
+    const sort = utils.getSort(req.query);
+
+    let response = await userServices.subscriptions(userId, name, sort, page, limit, true);
+    res.status(response.status).send(response.data);
+}
+
 module.exports.friend = async (req, res, next) => {
     logger.info('friend');
     const userId = req.decoded.uid;
