@@ -1,11 +1,11 @@
 {
-    "jwtPrivateKey": "myPrivateKey",
-    "db": "db_blogger",
-    "expirationPeriod": "2592000",
-    "emailSignKey": "Cu92cZmVQERMfRyX",
-    "cloudinaryCloudName": "ddvmgf6nd",
-    "cloudinaryApiKey": "287985392743888",
-    "cloudinaryApiSecret": "2f3GEIUtKKsYTEtJkYCPlU24NkE",
-    "sendGridApi": "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",
-    "emailFrom": "fgmmaker@gmail.com"
+    "jwtPrivateKey": "jwtPrivateKey",
+    "db": "db",
+    "expirationPeriod": "expirationPeriod",
+    "emailSignKey": "emailSignKey",
+    "cloudinaryCloudName": "cloudinaryCloudName",
+    "cloudinaryApiKey": "cloudinaryApiKey",
+    "cloudinaryApiSecret": "cloudinaryApiSecret",
+    "sendGridApi": "sendGridApi",
+    "emailFrom": "emailFrom"
 }
