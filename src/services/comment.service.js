@@ -78,8 +78,23 @@ module.exports.getComments = async (userId, blogId, guest, seenIds, limit) => {
                 $match: matchObject
             },
             {
+                $lookup: {
+                    from: 'users',
+                    foreignField: '_id',
+                    localField: 'user._id',
+                    as: 'userX'
+                }
+            },
+            {
                 $project: {
-                    __v: 0
+                    blogId: 1,
+                    content: 1,
+                    createDate: 1,
+                    user: {
+                        _id: 1,
+                        username: 1,
+                        avatar: { $arrayElemAt: ['$userX.avatar', 0] }
+                    }
                 }
             },
             {

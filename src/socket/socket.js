@@ -7,6 +7,7 @@ const security = require('../security/security');
 let io = null;
 
 module.exports.NOTIFICATION = 'notification';
+module.exports.FRIEND = 'friend';
 module.exports.MESSAGE = 'message';
 module.exports.MESSAGE_READ = 'message_read';
 module.exports.DELETE_MESSAGE = 'delete_message';

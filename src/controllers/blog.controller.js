@@ -28,8 +28,9 @@ module.exports.getBlogs = async (req, res, next) => {
         userIdToShow = req.query.userId;
     }
     const guest = utils.isGeust(req.decoded);
+    const tab = req.query.currentTab;
 
-    let response = await blogServices.getBlogs(userId, userIdToShow, guest, name, sort, page, limit);
+    let response = await blogServices.getBlogs(userId, userIdToShow, guest, name, sort, page, limit, tab);
     res.status(response.status).send(response.data);
 }
 

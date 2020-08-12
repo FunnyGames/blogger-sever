@@ -1,5 +1,11 @@
 {
     "jwtPrivateKey": "myPrivateKey",
     "db": "mongodb://localhost/db_blogger",
-    "expirationPeriod": "2592000"
+    "expirationPeriod": "2592000",
+    "emailSignKey": "email_sign_key",
+    "cloudinaryCloudName": "cloud_name",
+    "cloudinaryApiKey": "api_key",
+    "cloudinaryApiSecret": "api_secret",
+    "sendGridApi": "send_grid_api",
+    "emailFrom": "fgmmaker@gmail.com"
 }

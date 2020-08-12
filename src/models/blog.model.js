@@ -14,7 +14,7 @@ const blogSchema = new mongoose.Schema({
     },
     permission: {
         type: String,
-        enum: ['private', 'public'],
+        enum: ['private', 'public', 'friends'],
         required: true
     },
     tags: {
@@ -23,7 +23,8 @@ const blogSchema = new mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: true,
+        index: true
     },
     ownerName: {
         type: String,

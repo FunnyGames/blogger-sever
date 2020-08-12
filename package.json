@@ -1,6 +1,6 @@
 {
   "name": "blogger",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "description": "Blogger system",
   "main": "app.js",
   "scripts": {
@@ -14,11 +14,14 @@
   "license": "ISC",
   "dependencies": {
     "@hapi/joi": "^17.1.1",
+    "@sendgrid/mail": "^7.2.2",
     "bcrypt": "^3.0.8",
+    "cloudinary": "^1.22.0",
     "compression": "^1.7.4",
     "config": "^3.3.1",
     "cookie-parser": "^1.4.5",
     "cors": "^2.8.5",
+    "crypto-js": "^4.0.0",
     "express": "^4.17.1",
     "express-async-errors": "^3.1.1",
     "helmet": "^3.22.0",
@@ -28,6 +31,8 @@
     "moment": "^2.25.2",
     "mongoose": "^5.9.11",
     "morgan": "^1.10.0",
+    "multer": "^1.4.2",
+    "shortid": "^2.2.15",
     "socket.io": "^2.3.0",
     "url-pattern": "^1.0.3",
     "winston": "^3.2.1"

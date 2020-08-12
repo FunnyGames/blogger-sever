@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const chatModel = require('../models/chat.model');
 const messageModel = require('../models/message.model');
 const userModel = require('../models/user.model');
+const emailServices = require('./email.service');
+const settingsServices = require('./settings.service');
 const utils = require('../common/utils');
 const socket = require('../socket/socket');
 const { responseSuccess, responseError, SERVER_ERROR } = require('../common/response');
@@ -99,7 +101,11 @@ module.exports.createMessage = async (userId, username, chatId, data) => {
         const meUser1 = chat.userId1.toString() === userId;
         const otherUser = meUser1 ? chat.userId2 : chat.userId1;
         message.fromUsername = meUser1 ? chat.username1 : chat.username2;
-        socket.send(otherUser, socket.MESSAGE, message);
+        let sent = socket.send(otherUser, socket.MESSAGE, message);
+        if (!sent) {
+            let toUsername = meUser1 ? chat.username2 : chat.username1;
+            sendPrivateMessageByEmail(message.fromUsername, toUsername, otherUser, chatId);
+        }
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -107,6 +113,26 @@ module.exports.createMessage = async (userId, username, chatId, data) => {
         return responseError(500, SERVER_ERROR);
     }
     return responseSuccess(response);
+}
+
+const sendPrivateMessageByEmail = async (fromUsername, toUsername, toUserId, chatId) => {
+    logger.info(`sendPrivateMessageByEmail - fromUsername: ${fromUsername}, toUsername: ${toUsername}, toUserId: ${toUserId}, chatId: ${chatId}`);
+    let userTo = await userModel.findOne({ _id: toUserId }).select('email');
+    if (userTo) {
+        let to = userTo.email;
+        let settings = await settingsServices.getSettings(toUserId);
+        if (settings.status !== 200) {
+            logger.error('Error getting settings for user: ' + toUsername);
+            return;
+        }
+        let emailSettings = settings.data.messageSettings;
+        if (emailSettings.includes('email')) {
+            await emailServices.sendPrivateMessage(to, fromUsername, toUsername, chatId);
+            logger.info('Email sent successfully to: ' + to);
+        } else {
+            logger.info(`User ${toUsername} disabled email for private messages`);
+        }
+    }
 }
 
 module.exports.getMessages = async (userId, chatId, seenIds, limit) => {
@@ -194,9 +220,21 @@ module.exports.getChatList = async (userId) => {
     try {
         // Get chat list
         const chats = await chatModel.find({ $or: [{ userId1: userId }, { userId2: userId }] }).select('-__v -createDate').sort('-lastUpdate');
+        const userArray = [];
+        for (let i = 0; i < chats.length; ++i) {
+            let c = chats[i];
+            const uid = c.userId1.toString() === userId ? c.userId2.toString() : c.userId1.toString();
+            userArray.push(uid);
+        }
+        const avatarList = await userModel.find({ _id: { $in: userArray } }).select('avatar');
+        const avatars = {};
+        for (let i = 0; i < avatarList.length; ++i) {
+            let a = avatarList[i];
+            avatars[a._id] = a.avatar;
+        }
 
         // Set it to response
-        response = { chats };
+        response = { chats, avatars };
     } catch (e) {
         // Catch error and log it
         logger.error(e.message);
@@ -245,7 +283,7 @@ module.exports.blockedUsers = async (userId) => {
                 { userId1: userId, userBlocked2: true },
                 { userId2: userId, userBlocked1: true }
             ]
-        }).select('_id username1 userId1 username2 userId2');
+        }).select('_id username1 userId1 username2 userId2').populate('userId1 userId2', 'avatar');
 
         // Set it to response
         response = { blocked };

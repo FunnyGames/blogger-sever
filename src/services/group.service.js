@@ -306,6 +306,7 @@ module.exports.getGroupUsers = async (groupId, name, sort, page, limit) => {
                 $project: {
                     _id: { $arrayElemAt: ['$user._id', 0] },
                     username: { $arrayElemAt: ['$user.username', 0] },
+                    avatar: { $arrayElemAt: ['$user.avatar', 0] },
                     owner: 1,
                     createDate: 1
                 }

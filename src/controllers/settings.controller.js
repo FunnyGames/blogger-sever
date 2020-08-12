@@ -17,3 +17,11 @@ module.exports.getSettings = async (req, res, next) => {
     let response = await settingServices.getSettings(userId);
     res.status(response.status).send(response.data);
 }
+
+module.exports.unsubscribeEmail = async (req, res, next) => {
+    logger.info('unsubscribeEmail');
+    const { email, token, t } = req.query;
+
+    let response = await settingServices.unsubscribeEmail(email, token, t);
+    res.status(response.status).send(response.data);
+}

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const defaultSettings = ['web', 'email'];
+const emailSettings = ['email'];
 
 const settingSchema = new mongoose.Schema({
     commentSettings: {
@@ -21,6 +22,16 @@ const settingSchema = new mongoose.Schema({
     blogSettings: {
         type: Array,
         default: defaultSettings,
+        required: true
+    },
+    friendSettings: {
+        type: Array,
+        default: defaultSettings,
+        required: true
+    },
+    messageSettings: {
+        type: Array,
+        default: emailSettings,
         required: true
     },
     customSettings: {

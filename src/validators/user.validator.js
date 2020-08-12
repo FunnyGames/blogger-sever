@@ -5,8 +5,11 @@ const Joi = require('@hapi/joi');
 const jUsername = Joi.string().alphanum().min(5).max(20);
 const jPassword = Joi.string().min(8).max(20);
 const jFirstName = Joi.string().min(1).max(50);
-const jLastName = Joi.string().min(1).max(50)
+const jLastName = Joi.string().min(1).max(50);
 const jEmail = Joi.string().min(5).max(120).email({ minDomainSegments: 2 });
+const jImage = Joi.string().min(25);
+
+module.exports.jEmail = jEmail;
 
 module.exports.register = (req, res, next) => {
     logger.debug('register');
@@ -71,6 +74,33 @@ module.exports.cancelAccount = (req, res, next) => {
     const schema = Joi.object({
         username: jUsername.required(),
         password: jPassword.required()
+    });
+
+    validate(schema, req.body, res, next);
+}
+
+module.exports.uploadAvatar = (req, res, next) => {
+    logger.debug('uploadAvatar');
+    const schema = Joi.object({
+        image: jImage.required()
+    });
+
+    validate(schema, req.body, res, next);
+}
+
+module.exports.resetPasswordRequest = (req, res, next) => {
+    logger.debug('resetPasswordRequest');
+    const schema = Joi.object({
+        email: jEmail.required()
+    });
+
+    validate(schema, req.body, res, next);
+}
+
+module.exports.resetPassword = (req, res, next) => {
+    logger.debug('resetPassword');
+    const schema = Joi.object({
+        newPassword: jPassword.required()
     });
 
     validate(schema, req.body, res, next);

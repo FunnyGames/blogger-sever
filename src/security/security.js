@@ -12,13 +12,21 @@ module.exports.signJwt = (data) => {
 // This checks if the url is unsecured - meaning that guest can get to API
 module.exports.isPublicUrl = (req) => {
     // Check if is public url
+    return isUrlAllowed(req, unsecureUrls.guest);
+}
+
+// This checks if the url is unsecured - meaning that user that needs to confirm email can get to API
+module.exports.isConfirmEmailUserUrl = (req) => {
+    return isUrlAllowed(req, unsecureUrls.confirmEmail);
+}
+
+function isUrlAllowed(req, urls) {
     const url = req.url.split('?')[0];
-    for (let i = 0; i < unsecureUrls.length; ++i) {
-        let obj = unsecureUrls[i];
+    for (let i = 0; i < urls.length; ++i) {
+        let obj = urls[i];
         let pattern = new UrlPattern(obj.url);
         if (pattern.match(url)) {
             if (req.method === obj.method) return true;
-            else return false;
         }
     }
     return false;
